@@ -29,7 +29,7 @@ Currently (06/03/25):
     * Need a way to get extremely entangled configurations
 '''
 
-@njit(parallel=True)
+@njit()
 def neighbours(array, point):
     '''
     Takes in array and specified point, outputs an array of neighbours of point and associated neighbour value.
@@ -53,7 +53,7 @@ def neighbours(array, point):
 
     return neighbour
 
-@njit(parallel=True)
+@njit()
 def restricted_neighbours(array, point):
     '''
     Takes in array and point in array and outputs an array of neighbours and neighbour value.
@@ -140,7 +140,7 @@ def orient(array):
     return oriented_structure
 
 
-@njit(parallel=True)
+@njit()
 def find_new(array, edge):
     '''
     Find valid locations to move edge, nb. needs to be restricted neighbours
@@ -158,7 +158,7 @@ def find_new(array, edge):
 
     return valid_neighbours[new_edge]
 
-@njit(parallel=True)
+@njit()
 def check_double_edge(array):
     '''
     Checks for singular points.
@@ -171,7 +171,7 @@ def check_double_edge(array):
 
     return array
 
-@njit(parallel=True)
+@njit()
 def check_verticies(array):
     '''
     Checks the verticies of the 3D state space.
@@ -192,7 +192,7 @@ def check_verticies(array):
 
     return status
 
-@njit(parallel = True)
+@njit()
 def crumple(array):
     '''
     Markov Chain method to enforce movement toward more crumpled structure.
@@ -216,7 +216,7 @@ def shear(array):
     return array
 
 
-@njit(parallel=True)
+@njit()
 def lattice_writhe(array):
     '''
     Want to explore Tait numbers T(A_{i}) on the two areas (8 areas modulo symmetry) on the indicatrix corresponding to projections on: 
@@ -360,7 +360,7 @@ def lattice_writhe(array):
     return (TA_1 + TA_2)/ 4
 
 
-@njit(parallel = True)
+@njit()
 def metropolis_acceptance(old, new, temperature):
     '''
     Probability to randomly accept update moves that arent crossing increasing.

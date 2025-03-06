@@ -517,7 +517,7 @@ par = ArgumentParser()
 
 par.add_argument("-d", "--discretization", type=int, default=100, help="Discretization of state space y,z axis.")
 par.add_argument("-t", "--temperature", type=float, default=0.01, help="Temperature of system, lets it vary from MCMC constraint.")
-par.add_argument("-it", "--iterations", type=float, default=1000, help="Iterations of BFACF algorithm.")
+par.add_argument("-it", "--iterations", type=int, default=1000, help="Iterations of BFACF algorithm.")
 par.add_argument("-k", "--knot", type=str, default='0_1', help="Knot type.")
 
 args = par.parse_args()

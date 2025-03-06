@@ -1,2 +1,5 @@
-\examples
-\figs
+/examples
+/figs
+/__pycache__
+*.csv
+*.png

@@ -2,6 +2,21 @@ import numpy as np
 from numba import njit, prange
 import matplotlib.pyplot as plt
 
+class Knot:
+    def __init__(self, knot, array):
+
+        self.knot = knot
+        self.array = array
+
+    def initialize(self):
+
+        if self.knot == '0_1':
+            return k0_1_initialization(self.array)
+        
+        elif self.knot == '3_1':
+            return k3_1_initialization(self.array)
+        
+
 def draw_line(grid, z, x1, y1, x2, y2, size):
     '''
     Bresenham's line algorithm; draws lines between points in array

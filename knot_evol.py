@@ -1,9 +1,10 @@
 import numpy as np
-from numba import njit, set_num_threads
+from numba import njit
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.cm as cm 
 import matplotlib.colors as mcolors  
+from argparse import ArgumentParser
 from knot_init import *
 
 '''
@@ -419,13 +420,14 @@ def BFACF_update(array, temperature, time):
                 return array, 0
 
 
-def main(discretization, temperature, it):
+def main():
 
     animate3D = False
     plot = True
     state_space = np.zeros((16, discretization, discretization))
 
-    unknot = k0_1_initialization(state_space)
+    knot = Knot(knot_type, state_space)
+    unknot = knot.initialize()
 
     print('Orienting...')
     unknot = orient(unknot)
@@ -438,7 +440,7 @@ def main(discretization, temperature, it):
     time_subdiv = 0
 
     for i in range(it):
-        if i%(i/10) == 0:
+        if i%(1000000) == 0:
             time_subdiv = 0
         unknot, energy = BFACF_update(unknot, temperature, time_subdiv)
         time_subdiv += 1
@@ -450,12 +452,12 @@ def main(discretization, temperature, it):
     coords = np.argwhere(unknot>0)
     coord_dat = [(unknot[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
 
-    np.savetxt('examples/config.csv', coord_dat, delimiter=",", fmt='%d')
+    np.savetxt(f'examples/config_{knot_type}.csv', coord_dat, delimiter=",", fmt='%d')
 
     writhe_calc = [x for x in writhe_calc if x != 0]  # O(n)
 
     plt.hist(writhe_calc)
-    plt.savefig('figs/writhe_distn')
+    plt.savefig(f'figs/writhe_distn_{knot_type}')
 
     if plot == True:
 
@@ -481,7 +483,7 @@ def main(discretization, temperature, it):
         ax.set_ylim([0, 100])
         ax.set_zlim([0, 100])
 
-        plt.savefig('figs/tangle')
+        plt.savefig(f'figs/tangle_{knot_type}')
 
     if animate3D == True:
         fig = plt.figure()
@@ -509,4 +511,21 @@ def main(discretization, temperature, it):
         plt.show()
 
 
-main(discretization= 100, temperature=0.01, it= 10000000)
+# main(discretization= 100, temperature=0.01, it= 10000000, knot_type= '3_1')
+
+par = ArgumentParser()
+
+par.add_argument("-d", "--discretization", type=int, default=100, help="Discretization of state space y,z axis.")
+par.add_argument("-t", "--temperature", type=float, default=0.01, help="Temperature of system, lets it vary from MCMC constraint.")
+par.add_argument("-it", "--iterations", type=float, default=1000, help="Iterations of BFACF algorithm.")
+par.add_argument("-k", "--knot", type=str, default='0_1', help="Knot type.")
+
+args = par.parse_args()
+
+if __name__ == "__main__":
+    discretization = args.discretization
+    temperature = args.temperature
+    it = args.iterations
+    knot_type = args.knot
+
+    main()

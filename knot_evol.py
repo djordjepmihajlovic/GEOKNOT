@@ -447,7 +447,6 @@ def main(discretization, temperature, it):
     np.savetxt('examples/config.csv', coord_dat, delimiter=",", fmt='%d')
 
     writhe_calc = [x for x in writhe_calc if x != 0]  # O(n)
-    print(writhe_calc)
 
     plt.hist(writhe_calc)
     plt.savefig('figs/writhe_distn')
@@ -504,4 +503,4 @@ def main(discretization, temperature, it):
         plt.show()
 
 
-main(discretization= 100, temperature=0.01, it= 10000)
+main(discretization= 100, temperature=0.01, it= 1000000)

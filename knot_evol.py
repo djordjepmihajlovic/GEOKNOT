@@ -435,11 +435,17 @@ def main(discretization, temperature, it):
 
     # run BFACF for a bunch of timesteps
     writhe_calc = []
+    time_subdiv = 0
+
     for i in range(it):
-        unknot, energy = BFACF_update(unknot, temperature, i)
-        writhe_calc.append(energy)
+        if i%(i/10) == 0:
+            time_subdiv = 0
+        unknot, energy = BFACF_update(unknot, temperature, time_subdiv)
+        time_subdiv += 1
+
         if i%1000 == 0:
             print(f"simulation: {i/it}%")
+            writhe_calc.append(energy)
 
     coords = np.argwhere(unknot>0)
     coord_dat = [(unknot[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
@@ -503,4 +509,4 @@ def main(discretization, temperature, it):
         plt.show()
 
 
-main(discretization= 100, temperature=0.01, it= 1000000)
+main(discretization= 100, temperature=0.01, it= 10000000)

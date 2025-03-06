@@ -21,6 +21,12 @@ To Implement:
     * Proteins (spec. bonded knotoids (capture forces) ~ protein_init.py ~ load in protein from PDB and automate)
     * S^{2} in Z^{4}, (S^{n} in Z^{n+2})?
     * TQFT inspired things?
+
+To Do:
+    * CNN with the entire state (large knot thats managed to span entire state space) and predict the knot type.
+
+Currently (06/03/25):
+    * Need a way to get extremely entangled configurations
 '''
 
 @njit(parallel=True)
@@ -500,4 +506,4 @@ def main(discretization, temperature, it):
         plt.show()
 
 
-main(discretization= 100, temperature=0.1, it= 100000000)
+main(discretization= 100, temperature=0.01, it= 1000000)

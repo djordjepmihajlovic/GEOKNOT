@@ -421,8 +421,6 @@ def BFACF_update(array, temperature, time):
 
 def main(discretization, temperature, it):
 
-    set_num_threads(12)
-
     animate3D = False
     plot = True
     state_space = np.zeros((16, discretization, discretization))
@@ -446,13 +444,13 @@ def main(discretization, temperature, it):
     coords = np.argwhere(unknot>0)
     coord_dat = [(unknot[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
 
-    np.savetxt('config.csv', coord_dat, delimiter=",", fmt='%d')
+    np.savetxt('examples/config.csv', coord_dat, delimiter=",", fmt='%d')
 
     writhe_calc = [x for x in writhe_calc if x != 0]  # O(n)
     print(writhe_calc)
 
     plt.hist(writhe_calc)
-    plt.savefig('writhe_distn')
+    plt.savefig('figs/writhe_distn')
 
     if plot == True:
 
@@ -478,7 +476,7 @@ def main(discretization, temperature, it):
         ax.set_ylim([0, 100])
         ax.set_zlim([0, 100])
 
-        plt.savefig('tangle')
+        plt.savefig('figs/tangle')
 
     if animate3D == True:
         fig = plt.figure()
@@ -506,4 +504,4 @@ def main(discretization, temperature, it):
         plt.show()
 
 
-main(discretization= 100, temperature=0.01, it= 1000000)
+main(discretization= 100, temperature=0.01, it= 10000)

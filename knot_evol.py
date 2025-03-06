@@ -415,7 +415,7 @@ def BFACF_update(array, temperature, time):
 
 def main(discretization, temperature, it):
 
-    # set_num_threads(12)
+    set_num_threads(12)
 
     animate3D = False
     plot = True
@@ -473,7 +473,6 @@ def main(discretization, temperature, it):
         ax.set_zlim([0, 100])
 
         plt.savefig('tangle')
-        plt.show()
 
     if animate3D == True:
         fig = plt.figure()
@@ -501,4 +500,4 @@ def main(discretization, temperature, it):
         plt.show()
 
 
-main(discretization= 100, temperature=0.1, it= 10000)
+main(discretization= 100, temperature=0.1, it= 100000000)

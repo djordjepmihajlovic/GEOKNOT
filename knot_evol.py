@@ -302,7 +302,7 @@ def lattice_writhe(array):
                 TA_1 += sign
             
             else:
-                TA_1 += sign
+                TA_1 += sign/mag
 
         if len(points_xz) == 2:
 
@@ -356,7 +356,12 @@ def lattice_writhe(array):
 
             cross_prod = np.cross(arrow_1, arrow_2)
             sign = np.sign(cross_prod[1])
-            TA_2 += sign
+            mag = ((arrow_1[0]-arrow_2[0])**2 + (arrow_1[1]-arrow_2[1])**2 +(arrow_1[2]-arrow_2[2])**2)**(1/2)
+
+            if mag == 0:
+                TA_2 += sign
+            else:
+                TA_2 += sign/mag
 
     return (TA_1 + TA_2)/ 4
 
@@ -511,7 +516,9 @@ def main():
         plt.show()
 
 
-# main(discretization= 100, temperature=0.01, it= 10000000, knot_type= '3_1')
+'''
+    Lets us specify arguements for the code.
+'''
 
 par = ArgumentParser()
 

@@ -424,7 +424,7 @@ def main():
 
     animate3D = False
     plot = True
-    state_space = np.zeros((6, discretization, discretization))
+    state_space = np.zeros((8, discretization, discretization))
 
     knot = Knot(knot_type, state_space)
     unknot = knot.initialize()

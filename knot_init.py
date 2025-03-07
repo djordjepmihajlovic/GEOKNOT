@@ -50,7 +50,7 @@ def k0_1_initialization(array):
     for i in prange(50, length - 24):
         for j in prange(50, length - 24):
             if i == 50 or i == length-25:
-                array[0][i][j] = 1
+                array[4][i][j] = 1
 
             if j == 50 or j == length-25:
 

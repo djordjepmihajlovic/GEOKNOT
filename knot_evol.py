@@ -409,20 +409,19 @@ def BFACF_update(array, temperature, time):
         return array, 0
     
     else:
-        if time< 1000000:
+        # if time< 1000000:
+        #     return update_array, new_energy
+        
+        # elif 900000<time<905000:
+        #     if metropolis_acceptance(old_c_energy, new_c_energy, temperature):
+        #         return update_array, new_energy
+        #     else:
+        #         return array, 0
+        
+        if metropolis_acceptance(old_energy, new_energy, temperature):
             return update_array, new_energy
-        
-        elif 900000<time<905000:
-            if metropolis_acceptance(old_c_energy, new_c_energy, temperature):
-                return update_array, new_energy
-            else:
-                return array, 0
-        
         else:
-            if metropolis_acceptance(old_energy, new_energy, temperature):
-                return update_array, new_energy
-            else:
-                return array, 0
+            return array, 0
 
 
 def main():

@@ -153,6 +153,7 @@ def find_new(array, edge):
 
     for i in neighbourhood:
         if i[3] != 1:
+            #and i[0] != 0 or i[1] != 0 or i[2] !=0:
             valid_neighbours.append(i)
     
     new_edge = np.random.choice(len(valid_neighbours))
@@ -298,11 +299,8 @@ def lattice_writhe(array):
             cross_prod = np.cross(arrow_1, arrow_2)
             mag = ((arrow_1[0]-arrow_2[0])**2 + (arrow_1[1]-arrow_2[1])**2 +(arrow_1[2]-arrow_2[2])**2)**(1/2)
             sign = np.sign(cross_prod[0])
-            if mag == 0:
-                TA_1 += sign
-            
-            else:
-                TA_1 += sign/mag
+
+            TA_1 += sign
 
         if len(points_xz) == 2:
 
@@ -358,10 +356,7 @@ def lattice_writhe(array):
             sign = np.sign(cross_prod[1])
             mag = ((arrow_1[0]-arrow_2[0])**2 + (arrow_1[1]-arrow_2[1])**2 +(arrow_1[2]-arrow_2[2])**2)**(1/2)
 
-            if mag == 0:
-                TA_2 += sign
-            else:
-                TA_2 += sign/mag
+            TA_2 += sign
 
     return (TA_1 + TA_2)/ 4
 
@@ -409,26 +404,27 @@ def BFACF_update(array, temperature, time):
         return array, 0
     
     else:
-        # if time< 1000000:
-        #     return update_array, new_energy
-        
-        # elif 900000<time<905000:
-        #     if metropolis_acceptance(old_c_energy, new_c_energy, temperature):
-        #         return update_array, new_energy
-        #     else:
-        #         return array, 0
-        
-        if metropolis_acceptance(old_energy, new_energy, temperature):
+        if time< 1000000:
             return update_array, new_energy
-        else:
-            return array, 0
+        
+        elif 900000<time<905000:
+            if metropolis_acceptance(old_c_energy, new_c_energy, temperature):
+                return update_array, new_energy
+            else:
+                return array, 0
+        
+        else: 
+            if metropolis_acceptance(old_energy, new_energy, temperature):
+                return update_array, new_energy
+            else:
+                return array, 0
 
 
 def main():
 
     animate3D = False
     plot = True
-    state_space = np.zeros((16, discretization, discretization))
+    state_space = np.zeros((6, discretization, discretization))
 
     knot = Knot(knot_type, state_space)
     unknot = knot.initialize()

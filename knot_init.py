@@ -47,16 +47,16 @@ def k0_1_initialization(array):
     '''
 
     length = len(array[0])
-    for i in prange(25, length - 24):
-        for j in prange(25, length - 24):
-            if i == 25 or i == length-25:
+    for i in prange(50, length - 24):
+        for j in prange(50, length - 24):
+            if i == 50 or i == length-25:
+                array[0][i][j] = 1
+
+            if j == 50 or j == length-25:
+
                 array[4][i][j] = 1
 
-            if j == 25 or j == length-25:
-
-                array[4][i][j] = 1
-
-    array[4][25][25] = array[4][25][75] = array[4][75][75] = array[4][75][25] = 0
+    array[4][50][50] = array[4][50][75] = array[4][75][75] = array[4][75][50] = 0
 
     print(len(np.argwhere(array == 1)))
 
@@ -110,6 +110,8 @@ def k3_1_initialization(array):
     draw_line(array, 4, 41, 50, 49, 50, 100) # 4
 
     array[5][50][50] = 1    
+
+    print(len(np.argwhere(array == 1)))
 
     return array
 

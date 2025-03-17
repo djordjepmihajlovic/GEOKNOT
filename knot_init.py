@@ -1,6 +1,8 @@
 import numpy as np
 from numba import njit, prange
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm 
+import matplotlib.colors as mcolors  
 
 class Knot:
     def __init__(self, knot, array):
@@ -11,7 +13,7 @@ class Knot:
     def initialize(self):
 
         if self.knot == '0_1':
-            return k0_1_initialization(self.array)
+            return k0_1_initialization_3(self.array)
         
         elif self.knot == '3_1':
             return k3_1_initialization(self.array)
@@ -81,6 +83,18 @@ def k0_1_initialization_2(array):
     array[4][25][75] = array[4][75][70] = array[4][75][75] = array[4][25][70] = 0
 
     print(len(np.argwhere(array == 1)))
+
+    return array
+
+def k0_1_initialization_3(array):
+    '''
+    Writhe = 1, 0_1
+    '''
+
+    draw_line(array, 6, 50, 47, 50, 32, 100)
+    draw_line(array, 5, 49, 31, 21, 48, 100)
+    draw_line(array, 6, 20, 47, 20, 32, 100)
+    draw_line(array, 7, 21, 31, 49, 48, 100)
 
     return array
 

@@ -27,7 +27,8 @@ To Do:
     * CNN with the entire state (large knot thats managed to span entire state space) and predict the knot type.
 
 Currently (06/03/25):
-    * Need a way to get extremely entangled configurations
+    * Need a way to get extremely entangled configurations 
+    * Need to test writhe calc; make sure it is correct
 '''
 
 @njit()
@@ -358,7 +359,7 @@ def lattice_writhe(array):
 
             TA_2 += sign
 
-    return (TA_1 + TA_2)/ 4
+    return TA_1/2
 
 
 @njit()
@@ -403,21 +404,21 @@ def BFACF_update(array, temperature, time):
     if status < 0:
         return array, 0
     
-    else:
-        if time< 1000000:
+    # else:
+    #     if time< 1000000:
+    #         return update_array, new_energy
+        
+    #     elif 900000<time<905000:
+    #         if metropolis_acceptance(old_c_energy, new_c_energy, temperature):
+    #             return update_array, new_energy
+    #         else:
+    #             return array, 0
+        
+    else: 
+        if metropolis_acceptance(old_energy, new_energy, temperature):
             return update_array, new_energy
-        
-        elif 900000<time<905000:
-            if metropolis_acceptance(old_c_energy, new_c_energy, temperature):
-                return update_array, new_energy
-            else:
-                return array, 0
-        
-        else: 
-            if metropolis_acceptance(old_energy, new_energy, temperature):
-                return update_array, new_energy
-            else:
-                return array, 0
+        else:
+            return array, 0
 
 
 def main():
@@ -432,6 +433,7 @@ def main():
     print('Orienting...')
     unknot = orient(unknot)
     writhe = lattice_writhe(unknot)
+    print(writhe)
     print('Initial update...')
     unknot, energy = BFACF_update(unknot, temperature, 0)
 
@@ -510,17 +512,17 @@ def main():
         ani = animation.FuncAnimation(fig, update, frames=10, interval=500, blit=False)
         plt.show()
 
-
+par = ArgumentParser()
 '''
     Lets us specify arguements for the code.
 '''
-
-par = ArgumentParser()
 
 par.add_argument("-d", "--discretization", type=int, default=100, help="Discretization of state space y,z axis.")
 par.add_argument("-t", "--temperature", type=float, default=0.01, help="Temperature of system, lets it vary from MCMC constraint.")
 par.add_argument("-it", "--iterations", type=int, default=1000, help="Iterations of BFACF algorithm.")
 par.add_argument("-k", "--knot", type=str, default='0_1', help="Knot type.")
+par.add_argument("-cr_g_d", "--crumple_grad_descent", type=float, default = 0.1, help="Percentage of iterations with crumple optimization.")
+par.add_argument("-wr_g_d", "--writhe_grad_descent", type=float, default= 0.8, help="Percentage of iterations with writhe optimization.")
 
 args = par.parse_args()
 

@@ -1,34 +1,39 @@
 import numpy as np
 from numba import njit
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 import matplotlib.cm as cm 
 import matplotlib.colors as mcolors  
 from argparse import ArgumentParser
 from knot_init import *
+from quantum_knot_invs import *
 
 '''
-BFACF algorithm for polygonal lattice knot evolution.
+BFACF/Pivot algorithm with Wang-Landau sampler implementation for flat writ dos polygonal lattice knot embeddings.
+
+Relevant literature: 
+    *
+    *
+    *
 
 Key Features:
     * Oriented lattice knots S^{1} in Z^{3}
     * Writhe calculation (https://www.unige.ch/math/folks/cimasoni/writhe.pdf)
-    * MCMC evolution towards highly entangled configurations
+    * Wang-Landau sampling toward flat writhe dos (g_w)
     * Visualization
 
 To Implement:
-    * Knotoids
+    * Links
+    * Knotoids 
     * Bonded knotoids
     * Proteins (spec. bonded knotoids (capture forces) ~ protein_init.py ~ load in protein from PDB and automate)
-    * S^{2} in Z^{4}, (S^{n} in Z^{n+2})?
-    * TQFT inspired things?
+    * S^{2} in Z^{4}, (S^{n} in Z^{n+2})
 
-To Do:
-    * CNN with the entire state (large knot thats managed to span entire state space) and predict the knot type.
-
-Currently (06/03/25):
-    * Need a way to get extremely entangled configurations 
+Currently (25/03/25):
+    * Implemented Wang-Landau sampler to flatten distribution
+    * Need to test uncorrelated samples; how many iterations between sample save
     * Need to test writhe calc; make sure it is correct
+    *** Neighbourhood can contain 3 points, requirement is that 2 of the neighbours at the previous and next point in the knot ***
+
 '''
 
 @njit()
@@ -153,7 +158,7 @@ def find_new(array, edge):
     neighbourhood = restricted_neighbours(array, edge)
 
     for i in neighbourhood:
-        if i[3] != 1:
+        if i[3] == 0:
             #and i[0] != 0 or i[1] != 0 or i[2] !=0:
             valid_neighbours.append(i)
     
@@ -187,8 +192,10 @@ def check_verticies(array):
         check = []
 
         neighbourhood = neighbours(array, i)
+        value = array[i[0]][i[1]][i[2]]
         for j in neighbourhood:
-            check.append(j[3])
+            if j[3] == (value+1)%(len(indicies)) or j[3] == (value-1)%(len(indicies)):
+                check.append(j[3])
 
         if len(np.argwhere(np.array(check)>0)) != 2:
             status -= 1
@@ -215,21 +222,36 @@ def crumple(array):
 
     return -energy
 
-def shear(array):
-    return array
+
+def sparse_point_density(array):
+    '''
+    Sparse point density is a method to ensure points from distant ends of knot cluster close to each other.
+    Similar to crumple however distance between knots of furthers position is optimized.
+    '''
+
+    sparse_array = array.copy()
+    for i in sparse_array:
+        neighbours = neighbours(sparse_array)
+        for j in neighbours:
+            neighbours_of_neighbours = neighbours[j]
+
+            for point in neighbours_of_neighbours:
+                if point[3] != 0:
+                    total_diff = 0
 
 
 @njit()
 def lattice_writhe(array):
     '''
     Want to explore Tait numbers T(A_{i}) on the two areas (8 areas modulo symmetry) on the indicatrix corresponding to projections on: 
-    (x, z) plane, (y, z) plane.
+    (x, z) plane, (y, z) plane [(x, y)??].
     Additionally, need to have defined direction to capture +,- crossings: cross product of a fixed orientation along knot
     '''
 
     indicies = np.argwhere(array>0)
     TA_1 = 0
     TA_2 = 0
+    TA_3 = 0
 
     for i in indicies:
         '''
@@ -239,15 +261,24 @@ def lattice_writhe(array):
         Also need to define orientation for these vectors
         Current issue: what to do when triple crossing? (lines 257, 264, 319, 312 ignore issue for now)
         : solution - define 'good' projections (0, 1, 2) points, omit any other projections
+        ! Projections are wrong, these are projections onto planes (1, 1, 0), (1, 0, 1), (0, 1, 1)
+        Projections of 8 quadrant indicatrix:
+        1. (1, 1, 1)
+        2. (1, 1, -1)
+        3. (1, -1, 1)
+        4. (1, -1, -1) 
         '''
 
         projected_vector_yz = array[:, i[1], i[2]] # list on yz plane projections
         projected_vector_xz = array[i[0], :, i[2]] # list on xz plane projections
+        projected_vector_xy = array[i[0], i[1], :] # list on xy plane projections
 
         points_yz = np.argwhere(projected_vector_yz > 0) # gives two locations (x) of crossings
         points_xz = np.argwhere(projected_vector_xz > 0) # gives two locations (y) of crossings
+        points_xy = np.argwhere(projected_vector_xy > 0)
 
-        if len(points_yz) == 2: # unsure as to why this doesnt omit the other projections?
+        ## yz plane
+        if len(points_yz) == 2: 
 
             vec_1_yz = np.empty((2, 4))
             vec_2_yz = np.empty((2, 4))
@@ -288,6 +319,10 @@ def lattice_writhe(array):
             arrow_1 = [p1[0] - p2[0], p1[1] - p2[1], p1[2] - p2[2]]
             arrow_2 = [p3[0] - p4[0], p3[1] - p4[1], p3[2] - p4[2]]
 
+            ##
+            writhe_distance = abs(vec_1_yz[0][3] - vec_2_yz[0][3]) 
+            ##
+
             arrow_1 = np.array(arrow_1)
             arrow_2 = np.array(arrow_2)
 
@@ -298,11 +333,14 @@ def lattice_writhe(array):
                 arrow_1 = -1 * arrow_1
 
             cross_prod = np.cross(arrow_1, arrow_2)
-            mag = ((arrow_1[0]-arrow_2[0])**2 + (arrow_1[1]-arrow_2[1])**2 +(arrow_1[2]-arrow_2[2])**2)**(1/2)
-            sign = np.sign(cross_prod[0])
-
+            mag = (arrow_1[0]-arrow_2[0])**2 + (arrow_1[1]-arrow_2[1])**2 + (arrow_1[2]-arrow_2[2])**2
+            if mag != 0:
+                sign = np.sign(cross_prod[0]) * writhe_distance/mag
+            else:
+                sign = 0
             TA_1 += sign
 
+        ## xz plane
         if len(points_xz) == 2:
 
             vec_1_xz = np.empty((2, 4))
@@ -344,6 +382,10 @@ def lattice_writhe(array):
             arrow_1 = [p1[0] - p2[0], p1[1] - p2[1], p1[2] - p2[2]]
             arrow_2 = [p3[0] - p4[0], p3[1] - p4[1], p3[2] - p4[2]]
 
+            ##
+            writhe_distance = abs(vec_1_xz[0][3] - vec_2_xz[0][3]) 
+            ##
+
             arrow_1 = np.array(arrow_1)
             arrow_2 = np.array(arrow_2)
 
@@ -354,112 +396,279 @@ def lattice_writhe(array):
                 arrow_1 = -1 * arrow_1
 
             cross_prod = np.cross(arrow_1, arrow_2)
-            sign = np.sign(cross_prod[1])
-            mag = ((arrow_1[0]-arrow_2[0])**2 + (arrow_1[1]-arrow_2[1])**2 +(arrow_1[2]-arrow_2[2])**2)**(1/2)
-
+            mag = (arrow_1[0]-arrow_2[0])**2 + (arrow_1[1]-arrow_2[1])**2 + (arrow_1[2]-arrow_2[2])**2
+            if mag != 0:
+                sign = np.sign(cross_prod[1]) * writhe_distance/mag
+            else:
+                sign = 0
             TA_2 += sign
 
-    return TA_1/2
+        ## xy plane, not sure if this is necessary.
+        if len(points_xy) == 2:
 
+            vec_1_xy = np.empty((2, 4))
+            vec_2_xy = np.empty((2, 4))
 
-@njit()
-def metropolis_acceptance(old, new, temperature):
+            idx_1_xy = 0
+            idx_2_xy = 0
+
+            for dx in [-1, 0, 1]:
+                for dy in [-1, 0, 1]:
+                    for dz in [-1, 0, 1]:
+
+                        if dx == 0 and dy == 0 and dz == 0:
+                            continue
+
+                        nx_1, ny_1, nz_1 = i[0] + dx, i[1] + dy, points_xy[0].item() + dz
+                        nx_2, ny_2, nz_2 = i[0] + dx, i[1] + dy, points_xy[1].item() + dz
+
+                        if 0<= nx_1 <array.shape[0] and 0<= ny_1 <array.shape[1] and 0<= nz_1 <array.shape[2] and array[nx_1][ny_1][nz_1] > 0:
+
+                            if idx_1_xy < 2:
+                                vec_1_xy[idx_1_xy] = [nx_1, ny_1, nz_1, array[nx_1][ny_1][nz_1]]
+
+                            idx_1_xy +=1
+
+                        if 0<= nx_2 <array.shape[0] and 0<= ny_2 <array.shape[1] and 0<= nz_2 <array.shape[2] and array[nx_2][ny_2][nz_2] > 0:
+
+                            if idx_2_xy < 2:
+                                vec_2_xy[idx_2_xy] = [nx_2, ny_2, nz_2, array[nx_2][ny_2][nz_2]]
+
+                            idx_2_xy += 1
+
+            # define vector to point small -> large
+            p1 = vec_1_xy[0]
+            p2 = vec_1_xy[1]
+            p3 = vec_2_xy[0]
+            p4 = vec_2_xy[1]
+
+            arrow_1 = [p1[0] - p2[0], p1[1] - p2[1], p1[2] - p2[2]]
+            arrow_2 = [p3[0] - p4[0], p3[1] - p4[1], p3[2] - p4[2]]
+
+            ##
+            writhe_distance = abs(vec_1_xy[0][3] - vec_2_xy[0][3]) 
+            ##
+
+            arrow_1 = np.array(arrow_1)
+            arrow_2 = np.array(arrow_2)
+
+            if p4[3]>p3[3]:
+                arrow_2 = -1 * arrow_2
+            
+            if p2[3]>p1[3]:
+                arrow_1 = -1 * arrow_1
+
+            cross_prod = np.cross(arrow_1, arrow_2)
+            mag = (arrow_1[0]-arrow_2[0])**2 + (arrow_1[1]-arrow_2[1])**2 + (arrow_1[2]-arrow_2[2])**2
+            if mag != 0:
+                sign = np.sign(cross_prod[2]) * writhe_distance/mag
+            else:
+                sign = 0
+            TA_3 += sign
+
+    return (TA_1 + TA_2 + TA_3)/6
+
+def metropolis_acceptance(old_energy, new_energy, temperature):
     '''
-    Probability to randomly accept update moves that arent crossing increasing.
+    Metropolis acceptance criterion.
     '''
-    if new > old:
+
+    if new_energy < old_energy:
         return True
     else:
-        prob = np.exp((new-old)/temperature)
-        return np.random.uniform(0, 1) < prob
+        return np.random.rand() < np.exp((old_energy - new_energy)/temperature)
+
     
-def BFACF_update(array, temperature, time):
+def BFACF(array, timesteps, sampler):
     '''
-    BFACF algorithm on oriented curve
+    BFACF with chosen sampling methods
     '''
 
+    if sampler == "Wang-Landau":
+        '''
+        Wang-Landau sampling algorithm for flat distributions of dos (energy).
+        '''
+
+        old_energy = lattice_writhe(array) # initial writhe computation
+
+        bins = 50
+        f = np.exp(1)
+        writhe_min, writhe_max = -20, 20
+        bin_edges = np.linspace(writhe_min, writhe_max, bins + 1)
+        g_w = np.zeros(bins)
+        H_w = np.zeros(bins)
+
+        def get_bin(w):
+            return np.digitize(w, bin_edges) -1
+        
+        def is_flat(H):
+            avg = np.mean(H[H>0])
+            return np.std(H[H>0])/ avg < 0.2
+        
+        for time in range(timesteps):
+
+            if time % 1000 == 0:
+                print(f"simulation: {time/timesteps}")
+
+            update_array = array.copy()
+            valid_indicies = np.argwhere(array > 1)
+
+            random_edge = np.random.choice(len(valid_indicies))
+            new_edge = find_new(update_array, valid_indicies[random_edge])
+
+            update_array[valid_indicies[random_edge][0]][valid_indicies[random_edge][1]][valid_indicies[random_edge][2]] = 0
+            update_array[int(new_edge[0])][int(new_edge[1])][int(new_edge[2])] += array[valid_indicies[random_edge][0]][valid_indicies[random_edge][1]][valid_indicies[random_edge][2]]
+            status = check_verticies(update_array)
+
+            new_energy = lattice_writhe(update_array)
+
+            if status < -2:
+                continue
+
+            if new_energy < writhe_min or new_energy > writhe_max:
+                continue
+
+            current_state = get_bin(old_energy)
+            new_state = get_bin(new_energy)
+
+            if np.random.rand() < min(1, np.exp(g_w[current_state]-g_w[new_state])):
+                old_energy = new_energy
+                current_state = new_state
+                array = update_array
+
+            g_w[current_state] += f ### NOT SURE ###
+            H_w[current_state] += 1
+
+            if time % 1000 == 0 and is_flat(H_w):
+                H_w[:] = 0
+                f *= 0.5
+    
+    elif sampler == "Metropolis":
+        '''
+        Metropolis acceptance algorithm.
+        '''
+
+        g_w = []
+        old_energy = lattice_writhe(array) # initial writhe computation
+        
+        for time in range(timesteps):
+
+            if time % 1000 == 0:
+                print(f"simulation: {time/timesteps}")
+
+            update_array = array.copy()
+            valid_indicies = np.argwhere(array > 1)
+
+            random_edge = np.random.choice(len(valid_indicies))
+            new_edge = find_new(update_array, valid_indicies[random_edge])
+
+            update_array[valid_indicies[random_edge][0]][valid_indicies[random_edge][1]][valid_indicies[random_edge][2]] = 0
+            update_array[int(new_edge[0])][int(new_edge[1])][int(new_edge[2])] += array[valid_indicies[random_edge][0]][valid_indicies[random_edge][1]][valid_indicies[random_edge][2]]
+            status = check_verticies(update_array)
+
+            new_energy = lattice_writhe(update_array)
+
+            if status < -2:
+                continue
+            else:
+                if metropolis_acceptance(old_energy, new_energy, 0.01):
+                    array = update_array
+                    old_energy = new_energy
+                    g_w.append(new_energy)
+
+    return array, g_w
+        
+def pivot(array):
+    '''
+    Pivot algorithm to increase autocorrelation of samples.
+    Notice: valid pivots occur on a shared axis in Z^{3}
+    '''
     update_array = array.copy()
-
-    # old_energy = compute_energy(update_array)
-
-    old_c_energy = crumple(update_array)
-    old_energy = lattice_writhe(update_array)
-
     valid_indicies = np.argwhere(array > 1)
 
-    random_edge = np.random.choice(len(valid_indicies))
-    new_edge = find_new(update_array, valid_indicies[random_edge])
+    def check_axis(coordinates_1, coordinates_2):
+        shared_axis = []
+        for i in range(3):
+            if coordinates_1[i] == coordinates_2[i]:
+                shared_axis.append(i)
 
-    update_array[valid_indicies[random_edge][0]][valid_indicies[random_edge][1]][valid_indicies[random_edge][2]] = 0
+        if len(shared_axis) > 1:
+            return True
 
-    update_array[int(new_edge[0])][int(new_edge[1])][int(new_edge[2])] += array[valid_indicies[random_edge][0]][valid_indicies[random_edge][1]][valid_indicies[random_edge][2]]
+    random_edge_1, random_edge_2 = np.random.choice(len(valid_indicies), size=2, replace=False)
+
+    if random_edge_2>random_edge_1:
+        w1 = [i for i in range(random_edge_1, random_edge_2+1)]
+        axis = np.argwhere(array == random_edge_2) - np.argwhere(array == random_edge_1)
+
+    else:
+        w1 = [i for i in range(random_edge_2, random_edge_1+1)]
+        axis = np.argwhere(array == random_edge_1) - np.argwhere(array == random_edge_2)
+
+    u = axis[0]/np.linalg.norm(axis[0])
+    ux, uy, uz = u[0], u[1], u[2]
+
+    pivot_point = np.argwhere(array == random_edge_1)
+    ang = np.random.choice([np.pi/2, -np.pi/2, np.pi])
+
+    R = np.array([
+        [ux**2*(1-np.cos(ang))+np.cos(ang), ux*uy*(1-np.cos(ang))-uz*np.sin(ang), ux*uz*(1-np.cos(ang))+uy*np.sin(ang)],
+        [ux*uy*(1-np.cos(ang))+uz*np.sin(ang), uy**2*(1-np.cos(ang))+np.cos(ang), uy*uz*(1-np.cos(ang))-ux*np.sin(ang)],
+        [ux*uz*(1-np.cos(ang))-uy*np.sin(ang), uy*uz*(1-np.cos(ang))+ux*np.sin(ang), uz**2*(1-np.cos(ang))+np.cos(ang)]])
+    
+    for x in w1:
+        index = np.argwhere(array == x)
+        translated_index = index - pivot_point 
+
+        if len(translated_index)>0:
+
+            new_index = np.dot(R, translated_index[0])
+            new_index = np.round(new_index + pivot_point).astype(int) 
+            update_array[index[0][0]][index[0][1]][index[0][2]] = 0
+            update_array[new_index[0][0]][new_index[0][1]][new_index[0][2]] = x
+
 
     status = check_verticies(update_array)
 
-    # new_energy = compute_energy(update_array)
-
-    new_c_energy = crumple(update_array)
-    new_energy = lattice_writhe(update_array)
-
-    if status < 0:
-        return array, 0
     
-    # else:
-    #     if time< 1000000:
-    #         return update_array, new_energy
-        
-    #     elif 900000<time<905000:
-    #         if metropolis_acceptance(old_c_energy, new_c_energy, temperature):
-    #             return update_array, new_energy
-    #         else:
-    #             return array, 0
-        
-    else: 
-        if metropolis_acceptance(old_energy, new_energy, temperature):
-            return update_array, new_energy
-        else:
-            return array, 0
+    if status < -2:
+        return array
+    else:
+        print(random_edge_1, random_edge_2)
+        return update_array
 
 
 def main():
 
-    animate3D = False
-    plot = True
-    state_space = np.zeros((8, discretization, discretization))
+    plot = False
+    state_space = np.zeros((discretization, discretization, discretization))
 
     knot = Knot(knot_type, state_space)
     unknot = knot.initialize()
 
+    # orient knot
     print('Orienting...')
     unknot = orient(unknot)
-    writhe = lattice_writhe(unknot)
-    print(writhe)
-    print('Initial update...')
-    unknot, energy = BFACF_update(unknot, temperature, 0)
 
+    # run test pivot:
+    for i in range(0, 1000):
+        unknot = pivot(unknot)
+
+    for x in range(0, 100):
     # run BFACF for a bunch of timesteps
-    writhe_calc = []
-    time_subdiv = 0
+        unknot, g_w = BFACF(array=unknot, timesteps=it, sampler="Wang-Landau")
 
-    for i in range(it):
-        if i%(1000000) == 0:
-            time_subdiv = 0
-        unknot, energy = BFACF_update(unknot, temperature, time_subdiv)
-        time_subdiv += 1
+        # save coords as required
+        coords = np.argwhere(unknot>0)
+        coord_dat = [(unknot[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
 
-        if i%1000 == 0:
-            print(f"simulation: {i/it}%")
-            writhe_calc.append(energy)
+        np.savetxt(f'examples/config_{knot_type}_{x}.csv', coord_dat, delimiter=",", fmt='%d')
 
-    coords = np.argwhere(unknot>0)
-    coord_dat = [(unknot[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
-
-    np.savetxt(f'examples/config_{knot_type}.csv', coord_dat, delimiter=",", fmt='%d')
-
-    writhe_calc = [x for x in writhe_calc if x != 0]  # O(n)
-
-    plt.hist(writhe_calc)
-    plt.savefig(f'figs/writhe_distn_{knot_type}')
+        plt.hist(g_w)
+        plt.xlabel('Writhe')
+        plt.ylabel('Frequency')
+        plt.title('Writhe Distribution Lattice Unknot')
+        plt.savefig(f'figs/writhe_distn_{knot_type}_{x}')
 
     if plot == True:
 
@@ -486,31 +695,8 @@ def main():
         ax.set_zlim([0, 100])
 
         plt.savefig(f'figs/tangle_{knot_type}')
-
-    if animate3D == True:
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-
-        def update(frame):
-            global unknot
-            for i in range(1000):  # Perform multiple updates per frame
-                unknot = BFACF_update(unknot, temperature) 
-            
-            ax.clear()  # Clear previous voxels
-
-            # Get voxel positions (nonzero values)
-            filled = unknot > 0
-            ax.voxels(filled, facecolors='blue', edgecolors='black', alpha=0.5)
-            ax.set_xlim([0, 100])
-            ax.set_ylim([0, 100])
-            ax.set_zlim([0, 100])
-
-            ax.set_title(f"Unknot")  # Optional title update
-
-            return ax,
-
-        ani = animation.FuncAnimation(fig, update, frames=10, interval=500, blit=False)
         plt.show()
+
 
 par = ArgumentParser()
 '''
@@ -518,17 +704,13 @@ par = ArgumentParser()
 '''
 
 par.add_argument("-d", "--discretization", type=int, default=100, help="Discretization of state space y,z axis.")
-par.add_argument("-t", "--temperature", type=float, default=0.01, help="Temperature of system, lets it vary from MCMC constraint.")
 par.add_argument("-it", "--iterations", type=int, default=1000, help="Iterations of BFACF algorithm.")
 par.add_argument("-k", "--knot", type=str, default='0_1', help="Knot type.")
-par.add_argument("-cr_g_d", "--crumple_grad_descent", type=float, default = 0.1, help="Percentage of iterations with crumple optimization.")
-par.add_argument("-wr_g_d", "--writhe_grad_descent", type=float, default= 0.8, help="Percentage of iterations with writhe optimization.")
 
 args = par.parse_args()
 
 if __name__ == "__main__":
     discretization = args.discretization
-    temperature = args.temperature
     it = args.iterations
     knot_type = args.knot
 

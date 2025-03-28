@@ -1,8 +1,5 @@
 import numpy as np
-from numba import njit, prange
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm 
-import matplotlib.colors as mcolors  
+from numba import prange
 
 class Knot:
     def __init__(self, knot, array):
@@ -13,7 +10,7 @@ class Knot:
     def initialize(self):
 
         if self.knot == '0_1':
-            return k0_1_initialization_3(self.array)
+            return k0_1_initialization(self.array)
         
         elif self.knot == '3_1':
             return k3_1_initialization(self.array)
@@ -52,13 +49,13 @@ def k0_1_initialization(array):
     for i in prange(50, length - 24):
         for j in prange(50, length - 24):
             if i == 50 or i == length-25:
-                array[4][i][j] = 1
+                array[50][i][j] = 1
 
             if j == 50 or j == length-25:
 
-                array[4][i][j] = 1
+                array[50][i][j] = 1
 
-    array[4][50][50] = array[4][50][75] = array[4][75][75] = array[4][75][50] = 0
+    array[50][50][50] = array[50][50][75] = array[50][75][75] = array[50][75][50] = 0
 
     print(len(np.argwhere(array == 1)))
 

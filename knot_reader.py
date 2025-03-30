@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm 
 import matplotlib.colors as mcolors  
 
-knot = np.loadtxt('examples/config_3_1.csv', delimiter=',', dtype=int)
+knot = np.loadtxt('examples/config_3_1_9.csv', delimiter=',', dtype=int)
 state = np.empty((16, 100, 100))
 
 for i in knot:

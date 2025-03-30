@@ -333,11 +333,7 @@ def lattice_writhe(array):
                 arrow_1 = -1 * arrow_1
 
             cross_prod = np.cross(arrow_1, arrow_2)
-            mag = (arrow_1[0]-arrow_2[0])**2 + (arrow_1[1]-arrow_2[1])**2 + (arrow_1[2]-arrow_2[2])**2
-            if mag != 0:
-                sign = np.sign(cross_prod[0]) * writhe_distance/mag
-            else:
-                sign = 0
+            sign = np.sign(cross_prod[0])
             TA_1 += sign
 
         ## xz plane
@@ -396,11 +392,8 @@ def lattice_writhe(array):
                 arrow_1 = -1 * arrow_1
 
             cross_prod = np.cross(arrow_1, arrow_2)
-            mag = (arrow_1[0]-arrow_2[0])**2 + (arrow_1[1]-arrow_2[1])**2 + (arrow_1[2]-arrow_2[2])**2
-            if mag != 0:
-                sign = np.sign(cross_prod[1]) * writhe_distance/mag
-            else:
-                sign = 0
+            sign = np.sign(cross_prod[1]) 
+
             TA_2 += sign
 
         ## xy plane, not sure if this is necessary.
@@ -459,14 +452,12 @@ def lattice_writhe(array):
                 arrow_1 = -1 * arrow_1
 
             cross_prod = np.cross(arrow_1, arrow_2)
-            mag = (arrow_1[0]-arrow_2[0])**2 + (arrow_1[1]-arrow_2[1])**2 + (arrow_1[2]-arrow_2[2])**2
-            if mag != 0:
-                sign = np.sign(cross_prod[2]) * writhe_distance/mag
-            else:
-                sign = 0
+            sign = np.sign(cross_prod[2]) 
+
             TA_3 += sign
 
     return (TA_1 + TA_2 + TA_3)/6
+
 
 def metropolis_acceptance(old_energy, new_energy, temperature):
     '''
@@ -640,7 +631,7 @@ def pivot(array):
 
 def main():
 
-    plot = False
+    plot = True
     state_space = np.zeros((discretization, discretization, discretization))
 
     knot = Knot(knot_type, state_space)
@@ -651,24 +642,24 @@ def main():
     unknot = orient(unknot)
 
     # run test pivot:
-    for i in range(0, 1000):
+    for i in range(0, 100):
         unknot = pivot(unknot)
 
-    for x in range(0, 100):
-    # run BFACF for a bunch of timesteps
-        unknot, g_w = BFACF(array=unknot, timesteps=it, sampler="Wang-Landau")
 
-        # save coords as required
-        coords = np.argwhere(unknot>0)
-        coord_dat = [(unknot[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
+# run BFACF for a bunch of timesteps
+    unknot, g_w = BFACF(array=unknot, timesteps=it, sampler="Metropolis")
 
-        np.savetxt(f'examples/config_{knot_type}_{x}.csv', coord_dat, delimiter=",", fmt='%d')
+    # save coords as required
+    coords = np.argwhere(unknot>0)
+    coord_dat = [(unknot[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
 
-        plt.hist(g_w)
-        plt.xlabel('Writhe')
-        plt.ylabel('Frequency')
-        plt.title('Writhe Distribution Lattice Unknot')
-        plt.savefig(f'figs/writhe_distn_{knot_type}_{x}')
+    np.savetxt(f'examples/config_{knot_type}_WRTEST.csv', coord_dat, delimiter=",", fmt='%d')
+
+    plt.hist(g_w)
+    plt.xlabel('Writhe')
+    plt.ylabel('Frequency')
+    plt.title('Writhe Distribution Lattice Unknot')
+    plt.savefig(f'figs/writhe_distn_{knot_type}_WRTEST')
 
     if plot == True:
 

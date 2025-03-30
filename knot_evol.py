@@ -631,7 +631,7 @@ def pivot(array):
 
 def main():
 
-    plot = True
+    plot = False
     state_space = np.zeros((discretization, discretization, discretization))
 
     knot = Knot(knot_type, state_space)

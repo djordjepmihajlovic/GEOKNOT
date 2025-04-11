@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm 
 import matplotlib.colors as mcolors  
 
-knot = np.loadtxt('examples/config_3_1_9.csv', delimiter=',', dtype=int)
-state = np.empty((16, 100, 100))
+knot = np.loadtxt('examples/config_3_1_14.csv', delimiter=',', dtype=int)
+state = np.empty((100, 100, 100))
 
 for i in knot:
     state[i[1]][i[2]][i[3]] = i[0]

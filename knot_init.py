@@ -1,5 +1,8 @@
 import numpy as np
 from numba import prange
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm 
+import matplotlib.colors as mcolors  
 
 class Knot:
     def __init__(self, knot, array):
@@ -15,10 +18,36 @@ class Knot:
         elif self.knot == '3_1':
             return k3_1_initialization(self.array)
         
+def plot_3d(array):
 
-def draw_line(grid, z, x1, y1, x2, y2, size):
+    norm = mcolors.Normalize(vmin=np.min(array[array > 0]), vmax=np.max(array))
+    cmap = cm.coolwarm  
+
+    # Initialize color array
+    colors = np.zeros(array.shape + (4,))  # RGBA color array
+
+    # Apply colormap for nonzero values
+    mask = array > 0  
+    colors[mask] = cmap(norm(array[mask]))  
+
+    colors[..., 3] = np.where(array > 0, 1.0, 0.0)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Plot the voxels
+    ax.voxels(array > 0, facecolors=colors)
+
+    ax.set_xlim([0, 100])
+    ax.set_ylim([0, 100])
+    ax.set_zlim([0, 100])
+
+    plt.show()
+        
+
+def draw_line_xy(grid, z, x1, y1, x2, y2, size):
     '''
-    Bresenham's line algorithm; draws lines between points in array
+    Bresenham's line algorithm; draws lines between points in array.
     '''
     dx = abs(x2 - x1)
     dy = abs(y2 - y1)
@@ -39,6 +68,66 @@ def draw_line(grid, z, x1, y1, x2, y2, size):
             err += dx
             y1 += sy
 
+def draw_line_xyz(grid, x1, y1, z1, x2, y2, z2, size):
+    '''
+    3D Bresenham's line algorithm; draws a line between two 3D points in a 3D grid.
+    '''
+    dx = abs(x2 - x1)
+    dy = abs(y2 - y1)
+    dz = abs(z2 - z1)
+    sx = 1 if x1 < x2 else -1
+    sy = 1 if y1 < y2 else -1
+    sz = 1 if z1 < z2 else -1
+
+    if dx >= dy and dx >= dz:        # x is the driving axis
+        err_y = dx // 2
+        err_z = dx // 2
+        while x1 != x2:
+            if 0 <= x1 < size and 0 <= y1 < size and 0 <= z1 < size:
+                grid[z1, y1, x1] = 1
+            err_y -= dy
+            err_z -= dz
+            if err_y < 0:
+                y1 += sy
+                err_y += dx
+            if err_z < 0:
+                z1 += sz
+                err_z += dx
+            x1 += sx
+    elif dy >= dx and dy >= dz:      # y is the driving axis
+        err_x = dy // 2
+        err_z = dy // 2
+        while y1 != y2:
+            if 0 <= x1 < size and 0 <= y1 < size and 0 <= z1 < size:
+                grid[z1, y1, x1] = 1
+            err_x -= dx
+            err_z -= dz
+            if err_x < 0:
+                x1 += sx
+                err_x += dy
+            if err_z < 0:
+                z1 += sz
+                err_z += dy
+            y1 += sy
+    else:                            # z is the driving axis
+        err_x = dz // 2
+        err_y = dz // 2
+        while z1 != z2:
+            if 0 <= x1 < size and 0 <= y1 < size and 0 <= z1 < size:
+                grid[z1, y1, x1] = 1
+            err_x -= dx
+            err_y -= dy
+            if err_x < 0:
+                x1 += sx
+                err_x += dz
+            if err_y < 0:
+                y1 += sy
+                err_y += dz
+            z1 += sz
+
+    # Set the final point
+    if 0 <= x2 < size and 0 <= y2 < size and 0 <= z2 < size:
+        grid[z2, y2, x2] = 1
 
 def k0_1_initialization(array):
     '''
@@ -88,10 +177,28 @@ def k0_1_initialization_3(array):
     Writhe = 1, 0_1
     '''
 
-    draw_line(array, 6, 50, 47, 50, 32, 100)
-    draw_line(array, 5, 49, 31, 21, 48, 100)
-    draw_line(array, 6, 20, 47, 20, 32, 100)
-    draw_line(array, 7, 21, 31, 49, 48, 100)
+    draw_line_xy(array, 6, 50, 47, 50, 32, 100)
+    draw_line_xy(array, 5, 49, 31, 21, 48, 100)
+    draw_line_xy(array, 6, 20, 47, 20, 32, 100)
+    draw_line_xy(array, 7, 21, 31, 49, 48, 100)
+
+    return array
+
+def k0_1_initialization_4(array):  
+    '''
+    Writhe = 1, 0_1, wide
+    '''
+
+    draw_line_xyz(array, 50, 47, 6, 50, 32, 6, 100)
+    draw_line_xyz(array, 50, 32, 6, 50, 32, 20, 100)
+    draw_line_xyz(array, 49, 31, 21, 21, 48, 21, 100)
+    draw_line_xyz(array, 20, 47, 6, 20, 32, 6, 100)
+    draw_line_xyz(array, 21, 31, 7, 49, 48, 7, 100)
+    draw_line_xyz(array, 21, 47, 6, 21, 47, 20, 100)
+
+
+    plot_3d(array)
+    
 
     return array
 
@@ -101,24 +208,24 @@ def k3_1_initialization(array):
     Initializes a 3_1 in state space
     '''
 
-    draw_line(array, 6, 51, 49, 51, 38, 100) # 6 
-    draw_line(array, 6, 50, 37, 44, 37, 100) # 6
+    draw_line_xy(array, 6, 51, 49, 51, 38, 100) # 6 
+    draw_line_xy(array, 6, 50, 37, 44, 37, 100) # 6
 
     array[5][37][43] = array[4][37][43] = array[3][37][43] = 1
 
-    draw_line(array, 2, 43, 38, 43, 45, 100) # 2
+    draw_line_xy(array, 2, 43, 38, 43, 45, 100) # 2
 
     array[5][46][43] = array[4][46][43] = array[3][46][43] = 1
 
-    draw_line(array, 6, 43, 47, 43, 52, 100) # 6 dw
-    draw_line(array, 6, 44, 53, 52, 53, 100) # 6
-    draw_line(array, 6, 53, 52, 53, 41, 100) # 6
+    draw_line_xy(array, 6, 43, 47, 43, 52, 100) # 6 dw
+    draw_line_xy(array, 6, 44, 53, 52, 53, 100) # 6
+    draw_line_xy(array, 6, 53, 52, 53, 41, 100) # 6
 
     array[5][40][53] = 1 # 5
 
-    draw_line(array, 4, 52, 40, 41, 40, 100) # 4 dw
-    draw_line(array, 4, 40, 41, 40, 49, 100) # 4
-    draw_line(array, 4, 41, 50, 49, 50, 100) # 4
+    draw_line_xy(array, 4, 52, 40, 41, 40, 100) # 4 dw
+    draw_line_xy(array, 4, 40, 41, 40, 49, 100) # 4
+    draw_line_xy(array, 4, 41, 50, 49, 50, 100) # 4
 
     array[5][50][50] = 1    
 
@@ -147,3 +254,4 @@ def k5_2_initialization(array):
     '''
 
     return array
+

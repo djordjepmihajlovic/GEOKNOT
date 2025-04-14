@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from numba import njit, prange
+from sympy import symbols
 
 '''
 This module calculates quantum invariants of a knot to determine knot type (not preserved in pivot algorithm).
@@ -14,6 +15,28 @@ Method:
     * Solves final equation (sequence of tensors multiplied by R^{x}).
         
 '''
+
+class TensorProduct:
+    '''
+    Building tensor algebra. 
+    '''
+
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def __repr__(self):
+        return f"{self.left} ⊗ {self.right}"
+    
+    def __eq__(self, other):
+        return (self.left, self.right) == (other.left, other.right)
+    
+    def __hash__(self):
+        return hash((self.left, self.right))
+    
+    def __rmul__(self, scalar):
+        return 
+
 
 def points_on_axis(array, axis):
     '''
@@ -55,91 +78,164 @@ def points_on_axis(array, axis):
 
     return np.array(projected_points, dtype=np.float64)
 
-@njit
-def crossings(projection, axis):
 
-        intersections = [] # coordinate information
-        orientation = [] # over/under information
+def scan(projection):
+    '''
+    Scans from bottom to top and extracts different horizontal splittings of diagram to compose tensor equation.
+    Need to jitify this function.
+    '''
 
-        for idx, i in enumerate(projection):
-            '''
-            1. projections (1, 1, 1)
-            Method:
+    splits = np.linspace(np.min(projection[:, 1:2]), np.max(projection[:, 1:2]), num=1000)
 
-            '''
+    proj = projection[:, 0:2]
+    proj_scan = []
+    splittings = []
+
+    for jdx, j in enumerate(splits):
+
+        x3 = 1000
+        y3 = j
+        x4 = -1000
+        y4 = j
+
+        intersections = []
+
+        for idx, i in enumerate(proj):
 
             x1 = i[0]
-            y1 = i[1] 
-            x2 = projection[(idx + 1)%len(projection)][0]
-            y2 = projection[(idx + 1)%len(projection)][1] 
+            y1 = i[1]
+            x2 = proj[(idx + 1)%len(proj)][0]
+            y2 = proj[(idx + 1)%len(proj)][1]
 
-            orig_x1 = i[2]
-            orig_y1 = i[3]
-            orig_z1 = i[4]
+            dt = ((x1-x2)*(y3-y4) - (y1-y2)*(x3-x4))
+            ds = ((x1-x2)*(y3-y4) - (y1-y2)*(x3-x4))
+            if dt == 0 or ds == 0:
+                continue
 
-            orig_x2 = projection[(idx + 1)%len(projection)][2]
-            orig_y2 = projection[(idx + 1)%len(projection)][3]
-            orig_z2 = projection[(idx + 1)%len(projection)][4]
-
-            '''
-            Ignoring conditions.
-            '''
+            t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4))/dt
+            s = ((x1-x3)*(y1-y2) - (y1-y3)*(x1-x2))/ds
             
-            for jdx, j in enumerate(projection):
-                '''
-                Logic here to avoid including crossings occuring between sequential segments.
-                Additional logic to avoid including crossings from lines lying on top of each other.
-                '''
-                if jdx != idx and jdx!=(idx-1)%len(projection) and jdx!=(idx+1)%len(projection):
+            if 0<=s<=1:
+                if 0<=t<=1:
 
-                    x3 = j[0]
-                    y3 = j[1] 
-                    x4 = projection[(jdx + 1)%len(projection)][0] 
-                    y4 = projection[(jdx + 1)%len(projection)][1] 
+                    ip_x = x1 + t * (x2 - x1)
+                    ip_y = y1 + t * (y2 - y1)
 
-                    dt = ((x1-x2)*(y3-y4) - (y1-y2)*(x3-x4))
-                    ds = ((x1-x2)*(y3-y4) - (y1-y2)*(x3-x4))
-                    if dt == 0 or ds == 0:
-                        continue
+                    ## check y increasing or decreasing
+                    diff_y = y2 - y1
+                    value = np.sign(diff_y)
 
-                    t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4))/dt
-                    s = ((x1-x3)*(y1-y2) - (y1-y3)*(x1-x2))/ds
-                    
-                    if 0<=s<=1:
-                        if 0<=t<=1:
+                    point = [np.round(ip_x, 2), np.round(ip_y, 2)]
+                    if not any(existing[:2] == point for existing in intersections):
+                        intersections.append(point + [value])
+        
+        intersections = sorted(intersections, key=lambda x: x[0])
+        if len(proj_scan) == 0:
+            if len(intersections)%2==0:
+                splittings.append([intersections[0][1], [i[2] for i in intersections]])
+                proj_scan.append([i[2] for i in intersections])
+        
+        else:
+            if proj_scan[-1] != [i[2] for i in intersections]:
+                if len(intersections)%2==0:
+                    proj_scan.append([i[2] for i in intersections])
+                    splittings.append([intersections[0][1], [i[2] for i in intersections]])
 
-                            ip_x = x1 + t * (x2 - x1)
-                            ip_y = y1 + t * (y2 - y1)
+    return splittings
 
-                            if [np.round(ip_x, decimals=2), np.round(ip_y, decimals=2)] not in intersections:
-                                intersections.append([np.round(ip_x, decimals=2), np.round(ip_y, decimals=2)])
+def crossing(projection, axis):
 
-                                '''
-                                Determine + or -.
-                                Req. over under and orientation.
-                                '''
+    intersections = []
+    for idx, i in enumerate(projection):
+        '''
+        1. projections (1, 1, 1)
+        Method:
 
-                                orig_x3 = j[2]
-                                orig_y3 = j[3]
-                                orig_z3 = j[4]
+        '''
 
-                                orig_x4 = projection[(jdx + 1)%len(projection)][2]
-                                orig_y4 = projection[(jdx + 1)%len(projection)][3]
-                                orig_z4 = projection[(jdx + 1)%len(projection)][4]
-            
-                                vect_1 = [orig_x2-orig_x1, orig_y2-orig_y1, orig_z2-orig_z1]
-                                vect_2 = [orig_x4-orig_x3, orig_y4-orig_y3, orig_z4-orig_z3]
+        x1 = i[0]
+        y1 = i[1] 
+        x2 = projection[(idx + 1)%len(projection)][0]
+        y2 = projection[(idx + 1)%len(projection)][1] 
 
-                                cross = np.cross(vect_1, vect_2)
-                                dot_v = np.dot(cross, axis)
-                                sign_vector_orientation = np.sign(dot_v)
+        orig_x1 = i[2]
+        orig_y1 = i[3]
+        orig_z1 = i[4]
 
-                                distance = np.array([orig_x3-orig_x1, orig_y3-orig_y1, orig_z3-orig_z1], dtype=np.float64)
-                                dot_d = np.dot(distance, axis)
-                                sign_distance = np.sign(dot_d)
+        orig_x2 = projection[(idx + 1)%len(projection)][2]
+        orig_y2 = projection[(idx + 1)%len(projection)][3]
+        orig_z2 = projection[(idx + 1)%len(projection)][4]
 
-                                sign = sign_distance * sign_vector_orientation
-                                orientation.append(sign)
+        '''
+        Ignoring conditions.
+        '''
+        
+        for jdx, j in enumerate(projection):
+            '''
+            Logic here to avoid including crossings occuring between sequential segments.
+            Additional logic to avoid including crossings from lines lying on top of each other.
+            '''
+            if jdx != idx and jdx!=(idx-1)%len(projection) and jdx!=(idx+1)%len(projection):
+
+                x3 = j[0]
+                y3 = j[1] 
+                x4 = projection[(jdx + 1)%len(projection)][0] 
+                y4 = projection[(jdx + 1)%len(projection)][1] 
+
+                dt = ((x1-x2)*(y3-y4) - (y1-y2)*(x3-x4))
+                ds = ((x1-x2)*(y3-y4) - (y1-y2)*(x3-x4))
+                if dt == 0 or ds == 0:
+                    continue
+
+                t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4))/dt
+                s = ((x1-x3)*(y1-y2) - (y1-y3)*(x1-x2))/ds
+                
+                if 0<=s<=1:
+                    if 0<=t<=1:
+
+                        ip_x = x1 + t * (x2 - x1)
+                        ip_y = y1 + t * (y2 - y1)
+
+                        point = [np.round(ip_y, 5)]
+
+                        # if [np.round(ip_x, decimals=2), np.round(ip_y, decimals=2)] not in intersections:
+                        #     intersections.append([np.round(ip_x, decimals=2), np.round(ip_y, decimals=2)])
+                        if not any(existing[:1] == point for existing in intersections):
+
+                            '''
+                            Determine + or -.
+                            Req. over under and orientation.
+                            '''
+                            
+                            orig_x3 = j[2]
+                            orig_y3 = j[3]
+                            orig_z3 = j[4]
+
+                            orig_x4 = projection[(jdx + 1)%len(projection)][2]
+                            orig_y4 = projection[(jdx + 1)%len(projection)][3]
+                            orig_z4 = projection[(jdx + 1)%len(projection)][4]
+        
+                            vect_1 = [orig_x2-orig_x1, orig_y2-orig_y1, orig_z2-orig_z1]
+                            vect_2 = [orig_x4-orig_x3, orig_y4-orig_y3, orig_z4-orig_z3]
+
+                            cross = np.cross(vect_1, vect_2)
+                            dot_v = np.dot(cross, axis)
+                            sign_vector_orientation = np.sign(dot_v)
+
+                            distance = np.array([orig_x3-orig_x1, orig_y3-orig_y1, orig_z3-orig_z1], dtype=np.float64)
+                            dot_d = np.dot(distance, axis)
+                            sign_distance = np.sign(dot_d)
+
+                            sign = sign_distance * sign_vector_orientation
+                            # rh, lh convention
+                            if sign > 0:
+                                wr = -1
+                            elif sign < 0: 
+                                wr = 1
+
+                            intersections.append(point + [wr])
+
+    return intersections
         
 
 class Q_invariant:
@@ -149,8 +245,74 @@ class Q_invariant:
         '''
         self.array = array
         self.q_group = q_group
-        self.axis = np.array([np.pi, np.e/2, np.sqrt(2)/2], dtype=np.int64)
+        self.axis = np.array([np.pi, -np.e/2, np.sqrt(2)/2])
         self.projection = points_on_axis(self.array, self.axis)
-        self.crossings = crossings(self.projection, self.axis)
+        scan(self.projection)
 
 
+    def build_equation(self):
+        '''
+        Build equation from splittings and crossings.
+        '''
+        tensors = scan(self.projection)
+        crossings = crossing(self.projection, self.axis)
+
+        equation = tensors
+        for i in crossings:
+            equation.append(i)
+
+        equation = sorted(equation, key = lambda x: x[0])
+        print(equation)
+
+        q = symbols('q')
+        e_1 = symbols('e_1') ## e1: (e_{1})
+        e_2 = symbols('e_2')
+        de_1 = symbols('de_1') ## dual e1: (e^{1})
+        de_2 = symbols('de_2')
+        V = symbols('V')
+        dV = symbols('dV')
+
+        if self.q_group == 'Uq(sl2)':
+            self.R = np.array([
+                [q**(1/4), 0, 0, 0],
+                [0, 0, q**(-1/4), 0],
+                [0, q**(-1/4), q**(1/4)-q**(-3/4), 0],
+                [0, 0, 0, q**(1/4)]])
+
+        '''
+        Require a list that goes -> tensors, crossing, tensor, etc...
+        '''
+
+        evaluation_table = {
+            TensorProduct(dV, V): q**(-1/2)*TensorProduct(de_1, e_1) + q**(1/2)*TensorProduct(de_2, e_2),
+            TensorProduct(V, dV): TensorProduct(e_1, de_1) + TensorProduct(e_2, de_2),
+        }
+
+        coevaluation_table = {
+            TensorProduct(de_1, e_1): 1,
+            TensorProduct(de_1, e_2): 0,
+            TensorProduct(de_2, e_1): 0,
+            TensorProduct(de_2, e_2): 1,
+            
+            TensorProduct(e_1, de_1): q**(1/2),
+            TensorProduct(e_1, de_2): 0,
+            TensorProduct(e_2, de_1): 0,
+            TensorProduct(e_2, de_2): q**(-1/2),
+        }
+
+        ## Debug plot ##
+
+        # plt.plot([i[0] for i in self.projection],[i[1] for i in self.projection], linestyle = '-', c='blue')
+        # plt.plot([self.projection[0][0], self.projection[-1][0]], [self.projection[0][1], self.projection[-1][1]], c='blue')
+
+        # for pt in self.projection:
+        #     x, y = pt[0], pt[1]
+        #     value = pt[5]
+        #     plt.text(x, y, str(value), fontsize=9, ha='left', va='bottom')
+
+        # for i in tensors:
+        #     plt.hlines(i[0], xmin=min(self.projection[:, 0]), xmax=max(self.projection[:, 0]), color='red', linestyle='--')
+
+        # plt.title('Projection of Knot: Quantum Invariant')
+        
+        # plt.show()

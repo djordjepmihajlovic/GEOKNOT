@@ -24,7 +24,7 @@ def plot_3d(array):
     cmap = cm.coolwarm  
 
     # Initialize color array
-    colors = np.zeros(array.shape + (4,))  # RGBA color array
+    colors = np.zeros(array.shape + (4,)) 
 
     # Apply colormap for nonzero values
     mask = array > 0  
@@ -79,7 +79,7 @@ def draw_line_xyz(grid, x1, y1, z1, x2, y2, z2, size):
     sy = 1 if y1 < y2 else -1
     sz = 1 if z1 < z2 else -1
 
-    if dx >= dy and dx >= dz:        # x is the driving axis
+    if dx >= dy and dx >= dz:        # x 
         err_y = dx // 2
         err_z = dx // 2
         while x1 != x2:
@@ -94,7 +94,7 @@ def draw_line_xyz(grid, x1, y1, z1, x2, y2, z2, size):
                 z1 += sz
                 err_z += dx
             x1 += sx
-    elif dy >= dx and dy >= dz:      # y is the driving axis
+    elif dy >= dx and dy >= dz:      # y 
         err_x = dy // 2
         err_z = dy // 2
         while y1 != y2:
@@ -109,7 +109,7 @@ def draw_line_xyz(grid, x1, y1, z1, x2, y2, z2, size):
                 z1 += sz
                 err_z += dy
             y1 += sy
-    else:                            # z is the driving axis
+    else:                            # z 
         err_x = dz // 2
         err_y = dz // 2
         while z1 != z2:

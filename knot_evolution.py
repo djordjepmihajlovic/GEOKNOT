@@ -17,6 +17,7 @@ Relevant literature:
     * Wang-Landau: 
     * Cimasoni Writhe calculation O(nlog(n)): 
     * Klenin Writhe calculation O(n^{2}): 
+    * Quantum invariants of knots
 
 Key Features:
     * Oriented lattice knots S^{1} in Z^{3}
@@ -537,7 +538,6 @@ def lattice_writhe_Cimasoni(array, projections_111, projections_1m11, projection
             '''
             1. projections (1, 1, 1)
             Method:
-
             '''
 
             x1 = i[0]
@@ -697,14 +697,14 @@ def compute_single_sts_writhe(ring1, ring2, i, j, lw):
             
             wr+=omega/(4*np.pi)
 
-    return 2*wr;
+    return 2*wr
 
 def metropolis_acceptance(old_energy, new_energy, temperature):
     '''
     Metropolis acceptance criterion.
     '''
 
-    if new_energy < old_energy:
+    if new_energy > old_energy: # (new writhe is larger)
         return True
     else:
         return np.random.rand() < np.exp((old_energy - new_energy)/temperature)
@@ -840,7 +840,8 @@ def BFACF(array, timesteps, sampler):
             if status < -2:
                 continue
             else:
-                if metropolis_acceptance(old_energy, new_energy, 1):
+                if metropolis_acceptance(old_energy, new_energy, 100):
+                    print('Accepted')
                     array = update_array
                     old_energy = new_energy
                     g_w.append(new_energy)
@@ -919,8 +920,13 @@ def main():
     # orient knot
     print('Orienting...')
     unknot = orient(unknot)
-    # To avoid crossings occuring ontop of each other choose highly irregular projections.
-    # [pi, e, sqrt(2)] :)
+    ## To avoid crossings occuring ontop of each other choose highly irregular projections.
+    ## [pi, e, sqrt(2)] :)
+
+    Q_invariant(unknot, 'Uq(sl2)').build_equation()
+
+
+    # breakpoint()
 
     projections_111 = points_on_axis(unknot, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
     projections_1m11 = points_on_axis(unknot, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
@@ -935,11 +941,17 @@ def main():
                                     projections_1m1m1=projections_1m1m1))
 
     ## run test pivot:
-    for i in range(0, 1000):
-        unknot = pivot(unknot)
+    # for i in range(0, 1000):
+    #     unknot = pivot(unknot)
 
     ## run BFACF for a bunch of timesteps
     unknot, g_w = BFACF(array=unknot, timesteps=it, sampler=sampler)
+
+    # for i in range(0, 1000):
+    #     unknot = pivot(unknot)
+
+    # ## run BFACF for a bunch of timesteps
+    # unknot, g_w = BFACF(array=unknot, timesteps=it, sampler=sampler)
 
     print('Final writhe...')
 
@@ -962,6 +974,9 @@ def main():
             x, y = pt[0], pt[1]
             value = pt[5]
             plt.text(x, y, str(value), fontsize=9, ha='left', va='bottom')
+            '''
+            Also should print found crossings and analyse.
+            '''
         
         plt.show()
 

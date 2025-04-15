@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from numba import njit, prange
 from sympy import symbols, simplify
+from tensor_algebra import *
 
 '''
 This module calculates quantum invariants of a knot to determine knot type (not preserved in pivot algorithm).
@@ -16,69 +17,6 @@ Method:
     * Solves final equation (sequence of tensors multiplied by R^{x}).
         
 '''
-
-class TensorProduct:
-    '''
-    Building tensor algebra. 
-    '''
-
-    def __init__(self, left, right):
-        self.left = left
-        self.right = right
-
-    def __repr__(self):
-        return f"({self.left}) ⊗ ({self.right})"
-    
-    def __eq__(self, other):
-        return (self.left, self.right) == (other.left, other.right)
-    
-    def __hash__(self):
-        return hash((self.left, self.right))
-    
-    def __rmul__(self, scalar):
-        return TensorExpression([(simplify(scalar), self)])
-    
-    def __mul__(self, other):
-        if isinstance(other, TensorProduct):
-            return TensorProduct(*(self.factors + other.factors))
-        else:
-            return TensorProduct(*(self.factors + (other,)))
-
-    def __add__(self, other):
-        return f"{self} + {other}"
-    
-class TensorExpression:
-    '''
-    Tensor Expression.
-    '''
-
-    def __init__(self, terms = None):
-        self.terms = terms if terms else []
-
-    def __add__(self, other):
-        return(TensorExpression(self.terms + other.terms))
-    
-    def __rmul__(self, scalar):
-        new_terms = [(simplify(scalar * coeff), tp) for coeff, tp in self.terms]
-        return TensorExpression(new_terms)
-    
-    def __mul__(self, other):
-        if isinstance(other, TensorExpression):
-            new_terms = []
-            for c1, tp1 in self.terms:
-                for c2, tp2 in other.terms:
-                    new_coeff = simplify(c1 * c2)
-                    new_tp = tp1 * tp2
-                    new_terms.append((new_coeff, new_tp))
-
-            return TensorExpression(new_terms)
-        
-        else:
-            raise TypeError("Unsupported type for tensor product")
-
-    def __repr__(self):
-        return " + ".join(f"{coeff}·({tp})" for coeff, tp in self.terms)
-
 
 def points_on_axis(array, axis):
     '''
@@ -399,13 +337,7 @@ class Q_invariant:
                 for p in range(0, len(elements)-1, 2):
                     vals.append(evaluate(TensorProduct(elements[p], elements[p+1])))
 
-                if len(vals) == 1:
-                    product.append(vals)
-                else:
-                    product.append(TensorProduct(vals[0], vals[1]))
-
-                print(product)
-
+                print(vals)
             
             else:
                 # x coord
@@ -419,14 +351,6 @@ class Q_invariant:
                 print(crossing_index)
                 print(prev_elements[crossing_index-1], prev_elements[crossing_index])
         
-        # eval = evaluate(TensorProduct(dV, V))
-
-        # result = 0
-        # for coeff, tp in eval.terms:
-        #     val = coevaluate(tp) 
-        #     result += coeff * val
-
-        # print(simplify(result))
 
         plt.plot([i[0] for i in self.projection],[i[1] for i in self.projection], linestyle = '-', c='blue')
         plt.plot([self.projection[0][0], self.projection[-1][0]], [self.projection[0][1], self.projection[-1][1]], c='blue')

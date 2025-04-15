@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from numba import njit, prange
-from sympy import symbols
+from sympy import symbols, simplify
 
 '''
 This module calculates quantum invariants of a knot to determine knot type (not preserved in pivot algorithm).
@@ -10,6 +10,7 @@ Takes in state space array and returns a Q_invariant object.
 Method:
     * Take in array of knot.
     * Project onto flat plane (non rational normal to avoid problems).
+    * Define Tensor category.
     * Forming the sequence.
     * Build equation.
     * Solves final equation (sequence of tensors multiplied by R^{x}).
@@ -26,7 +27,7 @@ class TensorProduct:
         self.right = right
 
     def __repr__(self):
-        return f"{self.left} ⊗ {self.right}"
+        return f"({self.left}) ⊗ ({self.right})"
     
     def __eq__(self, other):
         return (self.left, self.right) == (other.left, other.right)
@@ -35,7 +36,48 @@ class TensorProduct:
         return hash((self.left, self.right))
     
     def __rmul__(self, scalar):
-        return 
+        return TensorExpression([(simplify(scalar), self)])
+    
+    def __mul__(self, other):
+        if isinstance(other, TensorProduct):
+            return TensorProduct(*(self.factors + other.factors))
+        else:
+            return TensorProduct(*(self.factors + (other,)))
+
+    def __add__(self, other):
+        return f"{self} + {other}"
+    
+class TensorExpression:
+    '''
+    Tensor Expression.
+    '''
+
+    def __init__(self, terms = None):
+        self.terms = terms if terms else []
+
+    def __add__(self, other):
+        return(TensorExpression(self.terms + other.terms))
+    
+    def __rmul__(self, scalar):
+        new_terms = [(simplify(scalar * coeff), tp) for coeff, tp in self.terms]
+        return TensorExpression(new_terms)
+    
+    def __mul__(self, other):
+        if isinstance(other, TensorExpression):
+            new_terms = []
+            for c1, tp1 in self.terms:
+                for c2, tp2 in other.terms:
+                    new_coeff = simplify(c1 * c2)
+                    new_tp = tp1 * tp2
+                    new_terms.append((new_coeff, new_tp))
+
+            return TensorExpression(new_terms)
+        
+        else:
+            raise TypeError("Unsupported type for tensor product")
+
+    def __repr__(self):
+        return " + ".join(f"{coeff}·({tp})" for coeff, tp in self.terms)
 
 
 def points_on_axis(array, axis):
@@ -132,15 +174,20 @@ def scan(projection):
         intersections = sorted(intersections, key=lambda x: x[0])
         if len(proj_scan) == 0:
             if len(intersections)%2==0:
-                splittings.append([intersections[0][1], [i[2] for i in intersections]])
+                # splittings.append([intersections[0][1], [i[2] for i in intersections]])
+                splittings.append([i for i in intersections])
                 proj_scan.append([i[2] for i in intersections])
         
         else:
             if proj_scan[-1] != [i[2] for i in intersections]:
                 if len(intersections)%2==0:
                     proj_scan.append([i[2] for i in intersections])
-                    splittings.append([intersections[0][1], [i[2] for i in intersections]])
+                    # splittings.append([intersections[0][1], [i[2] for i in intersections]])
+                    splittings.append([i for i in intersections])
 
+    '''
+    splittings is a list of form [[[x, y, v], [x, y, dv]] ... []]
+    '''
     return splittings
 
 def crossing(projection, axis):
@@ -196,11 +243,11 @@ def crossing(projection, axis):
                         ip_x = x1 + t * (x2 - x1)
                         ip_y = y1 + t * (y2 - y1)
 
-                        point = [np.round(ip_y, 5)]
+                        point = [np. round(ip_x, 5), np.round(ip_y, 5)]
 
                         # if [np.round(ip_x, decimals=2), np.round(ip_y, decimals=2)] not in intersections:
                         #     intersections.append([np.round(ip_x, decimals=2), np.round(ip_y, decimals=2)])
-                        if not any(existing[:1] == point for existing in intersections):
+                        if not any(existing[:2] == point for existing in intersections):
 
                             '''
                             Determine + or -.
@@ -234,7 +281,6 @@ def crossing(projection, axis):
                                 wr = 1
 
                             intersections.append(point + [wr])
-
     return intersections
         
 
@@ -254,15 +300,17 @@ class Q_invariant:
         '''
         Build equation from splittings and crossings.
         '''
+
         tensors = scan(self.projection)
         crossings = crossing(self.projection, self.axis)
 
         equation = tensors
         for i in crossings:
-            equation.append(i)
+            equation.append([i])
 
-        equation = sorted(equation, key = lambda x: x[0])
-        print(equation)
+        equation = sorted(equation, key = lambda x: x[0][1]) # sort by y values 
+
+        ## debugging plot
 
         q = symbols('q')
         e_1 = symbols('e_1') ## e1: (e_{1})
@@ -273,15 +321,35 @@ class Q_invariant:
         dV = symbols('dV')
 
         if self.q_group == 'Uq(sl2)':
-            self.R = np.array([
-                [q**(1/4), 0, 0, 0],
-                [0, 0, q**(-1/4), 0],
-                [0, q**(-1/4), q**(1/4)-q**(-3/4), 0],
-                [0, 0, 0, q**(1/4)]])
 
-        '''
-        Require a list that goes -> tensors, crossing, tensor, etc...
-        '''
+            R_table_VV = {
+                TensorProduct(e_1, e_1): q**(1/4)*TensorProduct(e_1, e_1),
+                TensorProduct(e_1, e_2): q**(-1/4)*TensorProduct(e_2, e_1),
+                TensorProduct(e_2, e_1): q**(-1/4)*TensorProduct(e_1, e_2) + (q**(1/4) - q**(-3/4))*TensorProduct(e_2, e_1),
+                TensorProduct(e_2, e_2): q**(1/4)*TensorProduct(e_2, e_2),
+            }
+
+            inv_R_table_VV = {
+                TensorProduct(e_1, e_1): q**(-1/4)*TensorProduct(e_1, e_1),
+                TensorProduct(e_1, e_2): q**(1/4)*TensorProduct(e_2, e_1) + (q**(-1/4) - q**(3/4))*TensorProduct(e_1, e_2),
+                TensorProduct(e_2, e_1): q**(1/4)*TensorProduct(e_1, e_2),
+                TensorProduct(e_2, e_2): q**(-1/4)*TensorProduct(e_2, e_2),
+            }
+
+            R_table_dVdV = {
+                TensorProduct(de_1, de_1): q**(-1/4)*TensorProduct(de_1, de_1),
+                TensorProduct(de_1, de_2): q**(1/4)*TensorProduct(de_2, de_1),
+                TensorProduct(de_2, de_1): q**(1/4)*TensorProduct(de_1, de_2) + (q**(-1/4) - q**(3/4))*TensorProduct(de_2, de_1),
+                TensorProduct(de_2, de_2): q**(-1/4)*TensorProduct(de_2, de_2),
+            }
+
+            inv_R_table_dVdV = {
+                TensorProduct(de_1, de_1): q**(1/4)*TensorProduct(de_1, de_1),
+                TensorProduct(de_1, de_2): q**(-1/4)*TensorProduct(de_2, de_1) + (q**(1/4) - q**(-3/4))*TensorProduct(de_1, de_2),
+                TensorProduct(de_2, de_1): q**(-1/4)*TensorProduct(de_1, de_2),
+                TensorProduct(de_2, de_2): q**(1/4)*TensorProduct(de_2, de_2),
+            }
+
 
         evaluation_table = {
             TensorProduct(dV, V): q**(-1/2)*TensorProduct(de_1, e_1) + q**(1/2)*TensorProduct(de_2, e_2),
@@ -300,19 +368,77 @@ class Q_invariant:
             TensorProduct(e_2, de_2): q**(-1/2),
         }
 
-        ## Debug plot ##
+        basis_table = {
+            1.0: V,
+            -1.0: dV,
+        }
 
-        # plt.plot([i[0] for i in self.projection],[i[1] for i in self.projection], linestyle = '-', c='blue')
-        # plt.plot([self.projection[0][0], self.projection[-1][0]], [self.projection[0][1], self.projection[-1][1]], c='blue')
-
-        # for pt in self.projection:
-        #     x, y = pt[0], pt[1]
-        #     value = pt[5]
-        #     plt.text(x, y, str(value), fontsize=9, ha='left', va='bottom')
-
-        # for i in tensors:
-        #     plt.hlines(i[0], xmin=min(self.projection[:, 0]), xmax=max(self.projection[:, 0]), color='red', linestyle='--')
-
-        # plt.title('Projection of Knot: Quantum Invariant')
+        def evaluate(tensor_product):
+            return evaluation_table.get(tensor_product, tensor_product)
         
-        # plt.show()
+        def coevaluate(tensor_product):
+            return coevaluation_table.get(tensor_product, tensor_product)
+        
+        def RMatrix(tensor_product):
+            return R_table_VV.get(tensor_product, tensor_product)
+        
+        '''
+        Logic to read in equation.
+        '''
+
+        for idx, i in enumerate(equation):
+            elements = []
+            vals = []
+            product = []
+            if len(i)> 1:
+                for j in i:
+                    elements.append(basis_table.get(j[2]))
+                print(elements)
+                prev_elements = elements
+
+                for p in range(0, len(elements)-1, 2):
+                    vals.append(evaluate(TensorProduct(elements[p], elements[p+1])))
+
+                if len(vals) == 1:
+                    product.append(vals)
+                else:
+                    product.append(TensorProduct(vals[0], vals[1]))
+
+                print(product)
+
+            
+            else:
+                # x coord
+                ### Need to work on this logic...
+                order = equation[idx-1]
+                order.append(i[0])
+                order = sorted(order, key = lambda x: x[0])
+                crossing_index  = order.index(i[0])
+                ### Crossing is between elements at crossing_index and crossing_index-1
+                ### Crossing type (apply R matrix correctly)
+                print(crossing_index)
+                print(prev_elements[crossing_index-1], prev_elements[crossing_index])
+        
+        # eval = evaluate(TensorProduct(dV, V))
+
+        # result = 0
+        # for coeff, tp in eval.terms:
+        #     val = coevaluate(tp) 
+        #     result += coeff * val
+
+        # print(simplify(result))
+
+        plt.plot([i[0] for i in self.projection],[i[1] for i in self.projection], linestyle = '-', c='blue')
+        plt.plot([self.projection[0][0], self.projection[-1][0]], [self.projection[0][1], self.projection[-1][1]], c='blue')
+
+        for pt in self.projection:
+            x, y = pt[0], pt[1]
+            value = pt[5]
+            plt.text(x, y, str(value), fontsize=9, ha='left', va='bottom')
+
+        for i in tensors:
+            plt.hlines(i[0][1], xmin=min(self.projection[:, 0]), xmax=max(self.projection[:, 0]), color='red', linestyle='--')
+
+        plt.title('Projection of Knot: Quantum Invariant')
+        
+        plt.show()

@@ -3,6 +3,9 @@ import matplotlib.pyplot as plt
 from numba import njit, prange
 from sympy import symbols, simplify
 from tensor_algebra import *
+import kymoknot 
+from kymoknot.searchtype import SearchType
+from kymoknot.knotentry import KnotEntry
 
 '''
 This module calculates quantum invariants of a knot to determine knot type (not preserved in pivot algorithm).
@@ -320,8 +323,34 @@ class Q_invariant:
         def RMatrix(tensor_product):
             return R_table_VV.get(tensor_product, tensor_product)
         
+        def detect_change(equation):
+            '''
+            Observes what changes are happening between different partitions of knot diagram.
+            '''
+            for idx in range(0, len(equation)-1):
+                '''
+                Cup left of original.
+                '''
+                print(equation[idx])
+                print(equation[idx+1])
+
+            return None
+        
+        detect_change(equation)
+        
         '''
         Logic to read in equation.
+        Build equation and alter as we move through the changes.
+        'Detect change' function (between steps).
+            1. Get initial state
+                [V, dV] -> Create tensor
+            2. Check operation for next state:
+                Cup and location
+                    [V, dV] -> [V, dV, V, dV]
+                    = insert tensor factors accordingly (location = index), (function = cap or cup) using the insert_tensor function
+                Crossing and location
+                    [V, dV, V, dV] -> [V, dV, dV, V]
+                    = crossing, apply correct R matrix at location
         '''
 
         for idx, i in enumerate(equation):
@@ -337,7 +366,20 @@ class Q_invariant:
                 for p in range(0, len(elements)-1, 2):
                     vals.append(evaluate(TensorProduct(elements[p], elements[p+1])))
 
-                print(vals)
+                
+                if len(vals)>1:
+                    tensor_equation = 0
+                    for dxd in range(0, len(vals)-1):
+                        
+                        if tensor_equation == 0:
+                            tensor_equation = TensorProduct(vals[dxd], vals[dxd+1])
+                        
+                        else:
+                            tensor_equation = TensorProduct(tensor_equation, vals[dxd+1])
+                else:
+                    tensor_equation = vals[0]
+
+                print(tensor_equation)
             
             else:
                 # x coord
@@ -366,3 +408,44 @@ class Q_invariant:
         plt.title('Projection of Knot: Quantum Invariant')
         
         plt.show()
+
+    def alexander_polynomial(self, knot):
+        '''
+        KymoKnot: https://github.com/luca-tubiana/KymoKnot
+        '''
+
+        index = np.argwhere(self.array>0)
+        elements = []
+        for i in index:
+            elements.append([self.array[i[0]][i[1]][i[2]], i[0], i[1], i[2]])
+        
+        elements = sorted(elements, key=lambda x: x[0])
+        elements.append(elements[0])
+        
+        joggle_scale = 1e-4
+        elements = [np.array([i[1:4] for i in elements], dtype=float) +
+        np.random.normal(scale=joggle_scale, size=(len(elements), 3))]
+
+        kl = kymoknot.KymoKnotSearch(
+        seed=0,
+        closure_type=kymoknot.CL_QHULLHYB,
+        close_subchain=kymoknot.CL_QHULLHYB,
+        search_type=[SearchType.BU],
+        )
+
+        chain_res = kl.search(elements, kymoknot.INP_LINEAR)
+        res = chain_res[SearchType.BU]
+
+        x = knot
+        for ke in res[0]:
+            p = ke.knot_ids
+            p = p[3:]
+            p = ''.join(p.split())
+            x = ''.join(x.split())
+
+            if p == x:
+                l = True
+            else:
+                l = False
+
+        return l

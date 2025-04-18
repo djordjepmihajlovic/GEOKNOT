@@ -848,7 +848,7 @@ def BFACF(array, timesteps, sampler):
 
     return array, g_w
         
-def pivot(array):
+def pivot(array, knot):
     '''
     Pivot algorithm to increase autocorrelation of samples.
     Notice: valid pivots occur on a shared axis in Z^{3}
@@ -900,13 +900,16 @@ def pivot(array):
 
 
     status = check_verticies(update_array)
-
     
     if status < -2:
         return array
     else:
-        print(random_edge_1, random_edge_2)
-        return update_array
+        topo = Q_invariant(update_array, 'Uq(sl2)').alexander_polynomial(knot) 
+        if topo == True:
+            print(random_edge_1, random_edge_2)
+            return update_array
+        else:
+            return array
 
 
 def main():
@@ -920,11 +923,10 @@ def main():
     # orient knot
     print('Orienting...')
     unknot = orient(unknot)
-    ## To avoid crossings occuring ontop of each other choose highly irregular projections.
+    ## To avoid crossings occuring ontop of each other choose non-rational projections.
     ## [pi, e, sqrt(2)] :)
 
-    Q_invariant(unknot, 'Uq(sl2)').build_equation()
-
+    # Q_invariant(unknot, 'Uq(sl2)').build_equation()
 
     # breakpoint()
 
@@ -941,14 +943,14 @@ def main():
                                     projections_1m1m1=projections_1m1m1))
 
     ## run test pivot:
-    # for i in range(0, 1000):
-    #     unknot = pivot(unknot)
+    for i in range(0, 1000):
+        unknot = pivot(unknot, knot_type)
 
     ## run BFACF for a bunch of timesteps
     unknot, g_w = BFACF(array=unknot, timesteps=it, sampler=sampler)
 
-    # for i in range(0, 1000):
-    #     unknot = pivot(unknot)
+    for i in range(0, 1000):
+        unknot = pivot(unknot, knot_type)
 
     # ## run BFACF for a bunch of timesteps
     # unknot, g_w = BFACF(array=unknot, timesteps=it, sampler=sampler)

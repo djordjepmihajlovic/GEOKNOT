@@ -3,7 +3,7 @@ from functools import reduce
 
 class TensorProduct:
     '''
-    Building tensor algebra. 
+    Building tensor algebra.
     '''
 
     def __new__(cls, left, right):
@@ -12,13 +12,32 @@ class TensorProduct:
         To do this, we check 4 instances
         (tensor expression, tensor)
         (tensor, tensor expression)
-        (tesnor expression, tensor expression)
+        (tensor expression, tensor expression)
         (tensor, tensor)
         Tensor expression is an assortment of sums of tensors (a + b)
         Tensor is just a single tensor (c)
         Hence; for example suppose we have (a + b) ⊗ (c)
         We want to return (a ⊗ c) + (b ⊗ c)
         '''
+
+        if isinstance(left, UnitTensor):
+            if isinstance(right, TensorExpression):
+                self.expanded = right
+                return
+            self.left = right
+            self.right = None
+            self.expanded = None
+            return
+
+        if isinstance(right, UnitTensor):
+            if isinstance(left, TensorExpression):
+                self.expanded = left
+                return
+            self.left = left
+            self.right = None
+            self.expanded = None
+            return
+        
         if isinstance(left, TensorExpression) or isinstance(right, TensorExpression):
             left_expr = left if isinstance(left, TensorExpression) else TensorExpression([(1, left)])
             right_expr = right if isinstance(right, TensorExpression) else TensorExpression([(1, right)])
@@ -47,6 +66,9 @@ class TensorProduct:
         return (self.left, self.right) == (other.left, other.right)
     
     def __hash__(self):
+        '''
+        Hashing.
+        '''
         return hash((self.left, self.right))
     
     def __rmul__(self, scalar):
@@ -104,7 +126,29 @@ class TensorExpression:
             raise TypeError("Unsupported type for tensor product")
 
     def __repr__(self):
-        return " + ".join(f"{coeff}·({tp})" for coeff, tp in self.terms)
+        def format(coeff, tp):
+            if coeff == 1:
+                return f"({tp})"
+            
+            elif coeff == 0:
+                return None
+            
+            elif isinstance(tp, UnitTensor):
+                return f"{coeff}"
+            
+            else:
+                return f"({coeff})·({tp})"
+            
+        formatted = [format(c, t) for c, t in self.terms]
+
+        return " + ".join(f for f in formatted if f is not None)
+    
+class UnitTensor:
+    def __repr__(self):
+        return "1"
+    
+    def __eq__(self, other):
+        return isinstance(other, UnitTensor)
     
 
 def flatten_tensor(tp):
@@ -115,6 +159,9 @@ def flatten_tensor(tp):
         return [tp]
     
 def rebuild_tensor(elements):
+    if not elements:
+        return UnitTensor()
+    
     return reduce(lambda x, y: TensorProduct(x, y), elements)
 
 def insert_tensor(tensor_chain, new_tensor, index):
@@ -127,14 +174,59 @@ def insert_tensor(tensor_chain, new_tensor, index):
         flat = flatten_tensor(tp)
         flat.insert(index, new_tensor)
         new_tp = rebuild_tensor(flat)
-        new_terms.append((coeff, new_tp))
+
+        if isinstance(new_tp, TensorExpression): ### Avoiding nested TensorExpression terms!
+            for c, inner_tp in new_tp.terms:
+                new_terms.append((simplify(coeff * c), inner_tp))
+        
+        else:
+            new_terms.append((simplify(coeff), new_tp))
 
     return TensorExpression(new_terms)
 
-### tests
+def apply_R_matrix(tensor_chain, R_matrix, index):
 
-# (a ⊗ b) tensor
-# (a + b) ⊗ (c + d) = (a ⊗ c) + (a ⊗ d) + (b ⊗ c) + (b ⊗ d) associativity
+    if isinstance(tensor_chain, TensorProduct):
+        tensor_chain = TensorExpression([(1, tensor_chain)])
+
+    new_terms = []
+    for coeff, tp in tensor_chain.terms:
+        flat = flatten_tensor(tp)
+        left = flat[:index-1]
+        switch = [flat[index-1], flat[index]]
+        right = flat[index+1:]
+
+        inter_tp = rebuild_tensor(switch)
+
+        R_image = R_matrix.get(inter_tp)
+
+        for new_coeff, rep in R_image.terms:
+            full = left + flatten_tensor(rep) + right
+            new_tp = rebuild_tensor(full)
+            new_terms.append((simplify(coeff * new_coeff), new_tp))
+
+    return TensorExpression(new_terms)
+
+def apply_cap(tensor_chain, coev, index):
+    
+    if isinstance(tensor_chain, TensorProduct):
+        tensor_chain = TensorExpression([(1, tensor_chain)])
+
+    new_terms = []
+    for coeff, tp in tensor_chain.terms:
+        flat = flatten_tensor(tp)
+        left = flat[:index-1]
+        switch = [flat[index-1], flat[index]]
+        right = flat[index+1:]
+
+        inter_tp = rebuild_tensor(switch)
+        coev_terms = coev.get(inter_tp)
+
+        full = left + right
+        new_tp = rebuild_tensor(full)
+        new_terms.append((simplify(coeff * coev_terms), new_tp))
+
+    return TensorExpression(new_terms)
 
 q = symbols('q')
 e_1 = symbols('e_1') ## e1: (e_{1})
@@ -143,17 +235,111 @@ de_1 = symbols('de_1') ## dual e1: (e^{1})
 de_2 = symbols('de_2')
 V = symbols('V')
 dV = symbols('dV')
- 
-tester = ['(e_1) ⊗ (de_1) + (e_2) ⊗ (de_2)', '(e_1) ⊗ (de_1) + (e_2) ⊗ (de_2)']
-element_1 = TensorProduct(e_1, de_1) + TensorProduct(e_2, de_2)
-element_2 = TensorProduct(e_1, de_1) + TensorProduct(e_2, de_2)
 
-print(isinstance(element_1, TensorExpression))
-print(isinstance(element_2, TensorExpression))
+R_table_VV = {
+    TensorProduct(e_1, e_1): q**(1/4)*TensorProduct(e_1, e_1),
+    TensorProduct(e_1, e_2): q**(-1/4)*TensorProduct(e_2, e_1),
+    TensorProduct(e_2, e_1): q**(-1/4)*TensorProduct(e_1, e_2) + (q**(1/4) - q**(-3/4))*TensorProduct(e_2, e_1),
+    TensorProduct(e_2, e_2): q**(1/4)*TensorProduct(e_2, e_2),
+}
 
-element_3 = TensorProduct(element_1, element_2)
+R_table_VdV = {
+    TensorProduct(e_1, de_1): q**(-1/2)*TensorProduct(de_1, e_1),
+    TensorProduct(e_1, de_2): TensorProduct(de_2, e_1),
+    TensorProduct(e_2, de_1): TensorProduct(de_1, e_2) + (q - q**(-1))*TensorProduct(de_2, e_1),
+    TensorProduct(e_2, de_2): q**(-1/2)*TensorProduct(de_2, e_2),
+}
 
-print(element_3)
-print(isinstance(element_3, TensorExpression))
+R_table_dVV = {
+    TensorProduct(de_1, e_1): q**(-1/2)*TensorProduct(e_1, de_1),
+    TensorProduct(de_1, e_2): TensorProduct(e_2, de_1) + (q - q**(-1))*TensorProduct(e_1, de_2),
+    TensorProduct(de_2, e_1): TensorProduct(e_1, de_2),
+    TensorProduct(de_2, e_2): q**(-1/2)*TensorProduct(e_2, de_2),
+}
 
-print(insert_tensor(element_3, element_2, index=1))
+coev_dVV = {
+    TensorProduct(de_1, e_1): 1,
+    TensorProduct(de_1, e_2): 0,
+    TensorProduct(de_2, e_1): 0,
+    TensorProduct(de_2, e_2): 1,
+}
+
+coev_VdV = {
+    TensorProduct(e_1, de_1): q**(1/2),
+    TensorProduct(e_1, de_2): 0,
+    TensorProduct(e_2, de_1): 0,
+    TensorProduct(e_2, de_2): q**(-1/2),
+}
+
+### Check a couple example scenarios to ensure this is working correctly
+
+##################################
+## Example scenario: RMI unknot ##
+##################################
+
+def check_RMI():
+    # ev: initial instance of tensor C -> [V, dV]
+    tensor = TensorProduct(e_1, de_1) + TensorProduct(e_2, de_2)
+    # ev: insert ev at specific position (lets say left of original) -> [dV, V, V, dV]
+    new_ev = q**(-1/2)*TensorProduct(de_1, e_1) + q**(1/2)*TensorProduct(de_2, e_2)
+    print(tensor)
+    print(new_ev)
+    tensor = insert_tensor(tensor, new_ev, 0)
+    print(tensor)
+    # crossing: crossing occuring at specific position (lets say between V, dV [index:2]) -> [dV, V, V, dV]
+    tensor = apply_R_matrix(tensor, R_table_VV, 2)
+    print(tensor)
+    # cap: cap off an ev at specific position (lets say dV, V) -> [V, dV]
+    tensor = apply_cap(tensor, coev_dVV, 1)
+    print(tensor)
+    # cap: cap off last ev [V, dV] -> C
+    tensor = apply_cap(tensor, coev_VdV, 1)
+    print(tensor)
+
+###################################
+## Example scenario: RMII unknot ##
+###################################
+
+def check_RMII():
+    # ev: initial instance of tensor C -> [V, dV]
+    tensor = TensorProduct(e_1, de_1) + TensorProduct(e_2, de_2)
+    # ev: insert ev at specific position (lets say left of original) -> [dV, V, V, dV]
+    new_ev = q**(-1/2)*TensorProduct(de_1, e_1) + q**(1/2)*TensorProduct(de_2, e_2)
+    tensor = insert_tensor(tensor, new_ev, 0)
+    print(tensor)
+    # crossing: crossing occuring at specific position (lets say between V, dV [index:2]) -> [dV, V, V, dV]
+    tensor = apply_R_matrix(tensor, R_table_VV, 2)
+    print(tensor)
+    # cap: cap off an ev at specific position (lets say dV, V) -> [V, dV]
+    tensor = apply_cap(tensor, coev_dVV, 1)
+    print(tensor)
+    # cap: cap off last ev [V, dV] -> C
+    tensor = apply_cap(tensor, coev_VdV, 1)
+    print(tensor)
+
+####################################
+## Example scenario: RMIII unknot ##
+####################################
+
+def check_RMIII():
+    # ev: initial instance of tensor C -> [V, dV]
+    tensor = TensorProduct(e_1, de_1) + TensorProduct(e_2, de_2)
+    # ev: insert ev at specific position (lets say left of original) -> [dV, V, V, dV]
+    new_ev = q**(-1/2)*TensorProduct(de_1, e_1) + q**(1/2)*TensorProduct(de_2, e_2)
+    tensor = insert_tensor(tensor, new_ev, 0)
+    print(tensor)
+    # crossing: crossing occuring at specific position (lets say between V, dV [index:2]) -> [dV, V, V, dV]
+    tensor = apply_R_matrix(tensor, R_table_VV, 2)
+    print(tensor)
+    # cap: cap off an ev at specific position (lets say dV, V) -> [V, dV]
+    tensor = apply_cap(tensor, coev_dVV, 1)
+    print(tensor)
+    # cap: cap off last ev [V, dV] -> C
+    tensor = apply_cap(tensor, coev_VdV, 1)
+    print(tensor)
+
+###############################
+## Example scenario: trefoil ##
+###############################
+
+check_RMI()

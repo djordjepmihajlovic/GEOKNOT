@@ -442,10 +442,12 @@ class Q_invariant:
             p = p[3:]
             p = ''.join(p.split())
             x = ''.join(x.split())
-
+            if p == 'UN':
+                p = '0_1'
             if p == x:
                 l = True
             else:
                 l = False
-
+                
+        print(x)
         return l

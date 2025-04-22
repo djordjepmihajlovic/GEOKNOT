@@ -13,7 +13,7 @@ class Knot:
     def initialize(self):
 
         if self.knot == '0_1':
-            return k0_1_initialization_L(self.array)
+            return k0_1_initialization(self.array)
         
         elif self.knot == '3_1':
             return k3_1_initialization_L(self.array)
@@ -43,6 +43,7 @@ def plot_3d(array):
     ax.set_zlim([0, 100])
 
     plt.show()
+    plt.clf()
         
 
 def draw_line_xy(grid, z, x1, y1, x2, y2, size):
@@ -145,6 +146,25 @@ def k0_1_initialization(array):
                 array[50][i][j] = 1
 
     array[50][50][50] = array[50][50][75] = array[50][75][75] = array[50][75][50] = 0
+
+    print(len(np.argwhere(array == 1)))
+
+    return array
+
+def k0_1_initialization_corners(array):
+    '''
+    Initializes an unknot on the boundary of the state space i.e.
+    '''
+
+    length = len(array[0])
+    for i in prange(50, length - 24):
+        for j in prange(50, length - 24):
+            if i == 50 or i == length-25:
+                array[50][i][j] = 1
+
+            if j == 50 or j == length-25:
+
+                array[50][i][j] = 1
 
     print(len(np.argwhere(array == 1)))
 

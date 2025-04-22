@@ -1,14 +1,11 @@
 import numpy as np
-from numba import njit
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm 
-import matplotlib.colors as mcolors  
-from argparse import ArgumentParser
+from numba import njit, prange
 from knot_init import *
 from quantum_knot_invs import *
+from multiprocessing import Pool
 
 '''
-BFACF/Pivot algorithm with Wang-Landau sampler implementation for flat writ dos polygonal lattice knot embeddings.
+BFACF/Pivot algorithm with Wang-Landau sampler implementation for flat wrt dos polygonal lattice knot embeddings.
 
 Relevant literature: 
     * Lattice Knots: 
@@ -37,6 +34,9 @@ Currently (25/03/25):
     * Need to test uncorrelated samples; how many iterations between sample save
     * Need to test writhe calc; make sure it is correct
     *** Neighbourhood can contain 3 points, requirement is that 2 of the neighbours at the previous and next point in the knot ***
+
+    *** Urgently need to fix topology changing in BFACF ***
+    *** Need to fix speed (can be massively parallelized), maybe we want to use C code. ***
 
 '''
 
@@ -166,8 +166,10 @@ def find_new(array, edge):
             #and i[0] != 0 or i[1] != 0 or i[2] !=0:
             valid_neighbours.append(i)
     
-    new_edge = np.random.choice(len(valid_neighbours))
+    if len(valid_neighbours)==0:
+        return np.array([-1, -1, -1, -1], dtype=np.float64) # fixes no valid neighbour issue.
 
+    new_edge = np.random.choice(len(valid_neighbours))
     return valid_neighbours[new_edge]
 
 @njit()
@@ -187,11 +189,16 @@ def check_double_edge(array):
 def check_verticies(array):
     '''
     Checks the verticies of the 3D state space.
+    For strange edge cases: (if neighbourhood has more than 2 points) ->
+    Check vectors made beforehand; check vectors after; ensure distance is still signed the same.
     '''
     indicies = np.argwhere(array > 0)
 
     status = 0
 
+    ### new check: per neighbour (3x3x3) block can have as many points as possible as long as criteria satisfied 
+    ### -> this might be creating anomalies! Need to check how this can be done while topology is conserved.
+    ### Maybe addition sometimes works?
     for i in indicies:
         check = []
 
@@ -203,6 +210,7 @@ def check_verticies(array):
 
         if len(np.argwhere(np.array(check)>0)) != 2:
             status -= 1
+            ## rq. return of -2 (artifact from orientation)
 
     return status
 
@@ -219,12 +227,40 @@ def crumple(array):
 
     for i in indicies:
         for j in indicies:
-            if i[0] != j[0] or i[1] != j[1] or i[2] != j[2]:
-                dist += (i[0] - j[0]) **2 + (i[1] - j[1]) **2 + (i[2] - j[2]) **2
+            if i[0] != j[0] or i[1] != j[1] or i[2] != j[2] or j[3]<i[3]:
+                dist += ((i[0] - j[0]) **2 + (i[1] - j[1]) **2 + (i[2] - j[2]) **2)
 
-    energy = dist **(1/2)
+    energy = -dist **(1/2)
 
-    return -energy
+    return energy
+
+def radius_of_gyration(array):
+    indicies = np.argwhere(array>0)
+    center_of_mass = np.mean(indicies, axis=0)
+    return np.sqrt(np.mean(np.sum((indicies - center_of_mass)**2, axis=1)))
+
+@njit()
+def positional_difference(array, update_array):
+    indicies_1 = np.argwhere(array > 0)
+    indicies_2 = np.argwhere(update_array > 0)
+
+    # Extract the values at the indices
+    values_1 = np.empty(len(indicies_1), dtype=np.float64)
+    values_2 = np.empty(len(indicies_2), dtype=np.float64)
+
+    for idx in range(len(indicies_1)):
+        x, y, z = indicies_1[idx]
+        values_1[idx] = array[x, y, z]
+
+    for idx in range(len(indicies_2)):
+        x, y, z = indicies_2[idx]
+        values_2[idx] = update_array[x, y, z]
+
+    # Sort indices based on the values
+    sorted_indices_1 = indicies_1[np.argsort(values_1)]
+    sorted_indices_2 = indicies_2[np.argsort(values_2)]
+    differences = np.sum((sorted_indices_1 - sorted_indices_2) ** 2, axis=1)
+    return np.sum(differences)
 
 
 @njit()
@@ -534,7 +570,9 @@ def lattice_writhe_Cimasoni(array, projections_111, projections_1m11, projection
 
         intersections = []
         wr = 0
-        for idx, i in enumerate(x_th_proj):
+        # for idx, i in enumerate(x_th_proj):
+        for idx in prange(len(x_th_proj)):
+            i = x_th_proj[idx]
             '''
             1. projections (1, 1, 1)
             Method:
@@ -542,6 +580,8 @@ def lattice_writhe_Cimasoni(array, projections_111, projections_1m11, projection
 
             x1 = i[0]
             y1 = i[1] 
+            val1 = i[5]
+
             x2 = x_th_proj[(idx + 1)%len(x_th_proj)][0]
             y2 = x_th_proj[(idx + 1)%len(x_th_proj)][1] 
 
@@ -557,15 +597,20 @@ def lattice_writhe_Cimasoni(array, projections_111, projections_1m11, projection
             Ignoring conditions.
             '''
             
-            for jdx, j in enumerate(x_th_proj):
+            # for jdx, j in enumerate(x_th_proj):
+            for jdx in range(len(x_th_proj)):
+                
                 '''
                 Logic here to avoid including crossings occuring between sequential segments.
                 Additional logic to avoid including crossings from lines lying on top of each other.
                 '''
                 if jdx != idx and jdx!=(idx-1)%len(x_th_proj) and jdx!=(idx+1)%len(x_th_proj):
 
+                    j = x_th_proj[jdx]
                     x3 = j[0]
                     y3 = j[1] 
+
+                    val2 = j[5]
                     x4 = x_th_proj[(jdx + 1)%len(x_th_proj)][0] 
                     y4 = x_th_proj[(jdx + 1)%len(x_th_proj)][1] 
 
@@ -613,9 +658,9 @@ def lattice_writhe_Cimasoni(array, projections_111, projections_1m11, projection
                                 sign = sign_distance * sign_vector_orientation
                                 # rh, lh convention
                                 if sign > 0:
-                                    wr -= 1
+                                    wr -= 1 * (abs(val1-val2)%(len(np.argwhere(array>1))/2))/(np.linalg.norm(distance))
                                 elif sign < 0: 
-                                    wr += 1
+                                    wr += 1 * (abs(val1-val2)%(len(np.argwhere(array>1))/2))/(np.linalg.norm(distance))
 
         TA += wr
     TA = TA/4
@@ -707,7 +752,30 @@ def metropolis_acceptance(old_energy, new_energy, temperature):
     if new_energy > old_energy: # (new writhe is larger)
         return True
     else:
-        return np.random.rand() < np.exp((old_energy - new_energy)/temperature)
+        x = np.random.rand()
+        if x > 0.9:
+            return True
+        else:
+            return False
+        # Fix this! Accepting way too many falses
+        # return np.random.rand() < np.exp((old_energy - new_energy)/temperature)
+
+def autocorrelation(energy, lag):
+    '''
+    Compute autocorrelation.
+    '''
+    energy = np.array(energy)
+    mean = np.mean(energy)
+    var = np.var(energy)
+
+    autocorr = []
+    lags = np.arange(0, lag)
+
+    for l in lags:
+        cov = np.sum((energy[:len(energy)-l] - mean) * (energy[l:] - mean)) / (len(energy) - l)
+        autocorr.append(cov / var)
+
+    return lags, np.array(autocorr)
 
     
 def BFACF(array, timesteps, sampler):
@@ -797,18 +865,184 @@ def BFACF(array, timesteps, sampler):
 
         g_w = []
 
+        alpha = 0.33
+
+        old_crumple_energy = crumple(array)
+
+        projections_111 = points_on_axis(array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
+        projections_1m11 = points_on_axis(array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
+        projections_11m1 = points_on_axis(array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
+        projections_1m1m1 = points_on_axis(array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
+
+        old_writhe_energy = lattice_writhe_Cimasoni(array, 
+                                               projections_111=projections_111,
+                                               projections_11m1=projections_11m1,
+                                               projections_1m11=projections_1m11,
+                                               projections_1m1m1=projections_1m1m1) 
+
+        # old_energy = alpha * old_crumple_energy + alpha * old_writhe_energy 
+        old_energy = old_writhe_energy
+        
+        # old_energy = np.sum(lattice_writhe_Klenin(array))/(np.pi**2)
+        accepted = 0
+
+        for time in range(timesteps):
+            
+            # if time%100 == 0:
+            print(f"simulation: {time/timesteps}")
+
+            update_array = array.copy()
+            valid_indicies = np.argwhere(array > 1)
+
+            random_edge = np.random.choice(len(valid_indicies))
+            new_edge = find_new(update_array, valid_indicies[random_edge])
+
+            if np.array_equal(new_edge, np.array([-1, -1, -1, -1], dtype=np.float64)):
+                continue
+
+            update_array[valid_indicies[random_edge][0]][valid_indicies[random_edge][1]][valid_indicies[random_edge][2]] = 0
+            update_array[int(new_edge[0])][int(new_edge[1])][int(new_edge[2])] += array[valid_indicies[random_edge][0]][valid_indicies[random_edge][1]][valid_indicies[random_edge][2]]
+            status = check_verticies(update_array)
+
+            projections_111 = points_on_axis(update_array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
+            projections_1m11 = points_on_axis(update_array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
+            projections_11m1 = points_on_axis(update_array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
+            projections_1m1m1 = points_on_axis(update_array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
+
+            new_writhe_energy = lattice_writhe_Cimasoni(update_array, 
+                                                    projections_111=projections_111,
+                                                    projections_1m11=projections_1m11,
+                                                    projections_11m1=projections_11m1,
+                                                    projections_1m1m1=projections_1m1m1)
+
+            # new_crumple_energy = crumple(update_array)
+
+            # new_positional_energy = positional_difference(array, update_array)
+            
+            # new_energy = alpha * new_crumple_energy + alpha * new_writhe_energy + alpha * new_positional_energy
+            # new_energy = np.sum(lattice_writhe_Klenin(update_array))/(np.pi**2)
+            new_energy = new_writhe_energy
+
+            if status < -2:
+                continue
+            else:
+                if metropolis_acceptance(old_energy, new_energy, 1):
+                    accepted += 1
+                    array = update_array
+                    old_energy = new_energy
+                    g_w.append(new_energy)
+
+    return array, g_w
+        
+def pivot(array, timesteps, knot):
+    '''
+    Pivot algorithm to increase autocorrelation of samples.
+    Notice: valid pivots occur on a shared axis in Z^{3}
+    Can implement writhe here to try pivot to more writhed config.
+    Explicit seed flag 
+    '''
+
+    for time in range(timesteps):
+        update_array = array.copy()
+        valid_indicies = np.argwhere(array > 1)
+
+        def check_axis(coordinates_1, coordinates_2):
+            shared_axis = []
+            for i in range(3):
+                if coordinates_1[i] == coordinates_2[i]:
+                    shared_axis.append(i)
+
+            if len(shared_axis) > 1:
+                return True
+
+        random_edge_1, random_edge_2 = np.random.choice(len(valid_indicies), size=2, replace=False)
+
+        if random_edge_2>random_edge_1:
+            w1 = [i for i in range(random_edge_1, random_edge_2+1)]
+            axis = np.argwhere(array == random_edge_2) - np.argwhere(array == random_edge_1)
+
+        else:
+            w1 = [i for i in range(random_edge_2, random_edge_1+1)]
+            axis = np.argwhere(array == random_edge_1) - np.argwhere(array == random_edge_2)
+
+        u = axis[0]/np.linalg.norm(axis[0])
+        ux, uy, uz = u[0], u[1], u[2]
+
+        pivot_point = np.argwhere(array == random_edge_1)
+        ang = np.random.choice([np.pi/2, -np.pi/2, np.pi])
+
+        R = np.array([
+            [ux**2*(1-np.cos(ang))+np.cos(ang), ux*uy*(1-np.cos(ang))-uz*np.sin(ang), ux*uz*(1-np.cos(ang))+uy*np.sin(ang)],
+            [ux*uy*(1-np.cos(ang))+uz*np.sin(ang), uy**2*(1-np.cos(ang))+np.cos(ang), uy*uz*(1-np.cos(ang))-ux*np.sin(ang)],
+            [ux*uz*(1-np.cos(ang))-uy*np.sin(ang), uy*uz*(1-np.cos(ang))+ux*np.sin(ang), uz**2*(1-np.cos(ang))+np.cos(ang)]])
+        
+        for x in w1:
+            index = np.argwhere(array == x)
+            translated_index = index - pivot_point 
+
+            if len(translated_index)>0:
+
+                new_index = np.dot(R, translated_index[0])
+                new_index = np.round(new_index + pivot_point).astype(int) 
+                update_array[index[0][0]][index[0][1]][index[0][2]] = 0
+                update_array[new_index[0][0]][new_index[0][1]][new_index[0][2]] = x
+
+        status = check_verticies(update_array)
+        
+        if status < -2:
+            continue
+        else:
+            topo = Q_invariant(update_array, 'Uq(sl2)').alexander_polynomial(knot) 
+            if topo == True:
+                print(random_edge_1, random_edge_2)
+                array = update_array
+            
+            else:
+                continue
+
+    return array
+
+
+def BFACF_with_metrics(array, timesteps, sampler):
+    '''
+    BFACF run with metrics to analyze autocorrelation
+    '''
+
+    metrics = {
+        'writhe': [],
+        'positional_difference': [],
+        'radius_of_gyration': []
+    }
+
+    if sampler == "Wang-Landau":
+        '''
+        Wang-Landau sampling algorithm for flat distributions of dos (energy).
+        '''
+
         projections_111 = points_on_axis(array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
         projections_1m11 = points_on_axis(array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
         projections_11m1 = points_on_axis(array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
         projections_1m1m1 = points_on_axis(array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
 
         old_energy = lattice_writhe_Cimasoni(array, 
-                                               projections_111=projections_111,
-                                               projections_11m1=projections_11m1,
-                                               projections_1m11=projections_1m11,
-                                               projections_1m1m1=projections_1m1m1) 
+                                               projections_111=projections_111, 
+                                               projections_11m1=projections_1m11,
+                                               projections_1m11=projections_11m1,
+                                               projections_1m1m1=projections_1m1m1) # initial writhe computation
+
+        bins = 50
+        f = np.exp(1)
+        writhe_min, writhe_max = -20, 20
+        bin_edges = np.linspace(writhe_min, writhe_max, bins + 1)
+        g_w = np.zeros(bins)
+        H_w = np.zeros(bins)
+
+        def get_bin(w):
+            return np.digitize(w, bin_edges) -1
         
-        # old_energy = np.sum(lattice_writhe_Klenin(array))/(np.pi**2)
+        def is_flat(H):
+            avg = np.mean(H[H>0])
+            return np.std(H[H>0])/ avg < 0.2
         
         for time in range(timesteps):
 
@@ -828,218 +1062,200 @@ def BFACF(array, timesteps, sampler):
             projections_1m11 = points_on_axis(update_array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
             projections_11m1 = points_on_axis(update_array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
             projections_1m1m1 = points_on_axis(update_array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
-
             new_energy = lattice_writhe_Cimasoni(update_array, 
                                                     projections_111=projections_111,
                                                     projections_1m11=projections_1m11,
                                                     projections_11m1=projections_11m1,
                                                     projections_1m1m1=projections_1m1m1)
+
+            if status < -2:
+                continue
+
+            if new_energy < writhe_min or new_energy > writhe_max:
+                continue
+
+            current_state = get_bin(old_energy)
+            new_state = get_bin(new_energy)
+
+            if np.random.rand() < min(1, np.exp(g_w[current_state]-g_w[new_state])):
+                old_energy = new_energy
+                current_state = new_state
+                array = update_array
+
+            g_w[current_state] += f ### NOT SURE ###
+            H_w[current_state] += 1
+
+            if time % 1000 == 0 and is_flat(H_w):
+                H_w[:] = 0
+                f *= 0.5
+    
+    elif sampler == "Metropolis":
+        '''
+        Metropolis acceptance algorithm.
+        '''
+
+        g_w = []
+
+        alpha = 0.33
+
+        old_crumple_energy = crumple(array)
+
+        projections_111 = points_on_axis(array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
+        projections_1m11 = points_on_axis(array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
+        projections_11m1 = points_on_axis(array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
+        projections_1m1m1 = points_on_axis(array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
+
+        old_writhe_energy = lattice_writhe_Cimasoni(array, 
+                                               projections_111=projections_111,
+                                               projections_11m1=projections_11m1,
+                                               projections_1m11=projections_1m11,
+                                               projections_1m1m1=projections_1m1m1) 
+        
+        old_positional_energy = 0
+
+        old_energy = alpha * old_crumple_energy + alpha * old_writhe_energy 
+        
+        # old_energy = np.sum(lattice_writhe_Klenin(array))/(np.pi**2)
+        accepted = 0
+
+        for time in range(timesteps):
             
+            # if time%100 == 0:
+            print(f"simulation: {time/timesteps}")
+
+            update_array = array.copy()
+            valid_indicies = np.argwhere(array > 1)
+
+            random_edge = np.random.choice(len(valid_indicies))
+            new_edge = find_new(update_array, valid_indicies[random_edge])
+
+            if np.array_equal(new_edge, np.array([-1, -1, -1, -1], dtype=np.float64)):
+                continue
+
+            update_array[valid_indicies[random_edge][0]][valid_indicies[random_edge][1]][valid_indicies[random_edge][2]] = 0
+            update_array[int(new_edge[0])][int(new_edge[1])][int(new_edge[2])] += array[valid_indicies[random_edge][0]][valid_indicies[random_edge][1]][valid_indicies[random_edge][2]]
+            status = check_verticies(update_array)
+
+            projections_111 = points_on_axis(update_array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
+            projections_1m11 = points_on_axis(update_array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
+            projections_11m1 = points_on_axis(update_array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
+            projections_1m1m1 = points_on_axis(update_array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
+
+            new_writhe_energy = lattice_writhe_Cimasoni(update_array, 
+                                                    projections_111=projections_111,
+                                                    projections_1m11=projections_1m11,
+                                                    projections_11m1=projections_11m1,
+                                                    projections_1m1m1=projections_1m1m1)
+
+            new_crumple_energy = crumple(update_array)
+
+            new_positional_energy = positional_difference(array, update_array)
+
+            new_r_o_g = radius_of_gyration(array)
+            
+            new_energy = alpha * new_crumple_energy + alpha * new_writhe_energy + alpha * new_positional_energy
             # new_energy = np.sum(lattice_writhe_Klenin(update_array))/(np.pi**2)
 
             if status < -2:
                 continue
             else:
-                if metropolis_acceptance(old_energy, new_energy, 100):
-                    print('Accepted')
+                if metropolis_acceptance(old_energy, new_energy, 1):
+                    accepted += 1
                     array = update_array
                     old_energy = new_energy
-                    g_w.append(new_energy)
+                    metrics['writhe'].append(new_writhe_energy)
+                    metrics['positional_difference'].append(new_positional_energy)
+                    metrics['radius_of_gyration'].append(new_r_o_g)
 
-    return array, g_w
+    return array, metrics
         
-def pivot(array, knot):
+def pivot_with_metrics(array, timesteps, knot):
     '''
     Pivot algorithm to increase autocorrelation of samples.
     Notice: valid pivots occur on a shared axis in Z^{3}
-    Can implement writhe to try pivot to more writhed config.
+    Can implement writhe here to try pivot to more writhed config.
     '''
-    update_array = array.copy()
-    valid_indicies = np.argwhere(array > 1)
 
-    def check_axis(coordinates_1, coordinates_2):
-        shared_axis = []
-        for i in range(3):
-            if coordinates_1[i] == coordinates_2[i]:
-                shared_axis.append(i)
+    metrics = {
+        'writhe': [],
+        'positional_difference': [],
+        'radius_of_gyration': []
+    }
 
-        if len(shared_axis) > 1:
-            return True
+    for time in range(timesteps):
+        update_array = array.copy()
+        valid_indicies = np.argwhere(array > 1)
 
-    random_edge_1, random_edge_2 = np.random.choice(len(valid_indicies), size=2, replace=False)
+        def check_axis(coordinates_1, coordinates_2):
+            shared_axis = []
+            for i in range(3):
+                if coordinates_1[i] == coordinates_2[i]:
+                    shared_axis.append(i)
 
-    if random_edge_2>random_edge_1:
-        w1 = [i for i in range(random_edge_1, random_edge_2+1)]
-        axis = np.argwhere(array == random_edge_2) - np.argwhere(array == random_edge_1)
+            if len(shared_axis) > 1:
+                return True
 
-    else:
-        w1 = [i for i in range(random_edge_2, random_edge_1+1)]
-        axis = np.argwhere(array == random_edge_1) - np.argwhere(array == random_edge_2)
+        random_edge_1, random_edge_2 = np.random.choice(len(valid_indicies), size=2, replace=False)
 
-    u = axis[0]/np.linalg.norm(axis[0])
-    ux, uy, uz = u[0], u[1], u[2]
+        if random_edge_2>random_edge_1:
+            w1 = [i for i in range(random_edge_1, random_edge_2+1)]
+            axis = np.argwhere(array == random_edge_2) - np.argwhere(array == random_edge_1)
 
-    pivot_point = np.argwhere(array == random_edge_1)
-    ang = np.random.choice([np.pi/2, -np.pi/2, np.pi])
-
-    R = np.array([
-        [ux**2*(1-np.cos(ang))+np.cos(ang), ux*uy*(1-np.cos(ang))-uz*np.sin(ang), ux*uz*(1-np.cos(ang))+uy*np.sin(ang)],
-        [ux*uy*(1-np.cos(ang))+uz*np.sin(ang), uy**2*(1-np.cos(ang))+np.cos(ang), uy*uz*(1-np.cos(ang))-ux*np.sin(ang)],
-        [ux*uz*(1-np.cos(ang))-uy*np.sin(ang), uy*uz*(1-np.cos(ang))+ux*np.sin(ang), uz**2*(1-np.cos(ang))+np.cos(ang)]])
-    
-    for x in w1:
-        index = np.argwhere(array == x)
-        translated_index = index - pivot_point 
-
-        if len(translated_index)>0:
-
-            new_index = np.dot(R, translated_index[0])
-            new_index = np.round(new_index + pivot_point).astype(int) 
-            update_array[index[0][0]][index[0][1]][index[0][2]] = 0
-            update_array[new_index[0][0]][new_index[0][1]][new_index[0][2]] = x
-
-
-    status = check_verticies(update_array)
-    
-    if status < -2:
-        return array
-    else:
-        topo = Q_invariant(update_array, 'Uq(sl2)').alexander_polynomial(knot) 
-        if topo == True:
-            print(random_edge_1, random_edge_2)
-            return update_array
         else:
-            return array
+            w1 = [i for i in range(random_edge_2, random_edge_1+1)]
+            axis = np.argwhere(array == random_edge_1) - np.argwhere(array == random_edge_2)
 
+        u = axis[0]/np.linalg.norm(axis[0])
+        ux, uy, uz = u[0], u[1], u[2]
 
-def main():
+        pivot_point = np.argwhere(array == random_edge_1)
+        ang = np.random.choice([np.pi/2, -np.pi/2, np.pi])
 
-    plot = True
-    state_space = np.zeros((discretization, discretization, discretization))
-
-    knot = Knot(knot_type, state_space)
-    unknot = knot.initialize()
-
-    # orient knot
-    print('Orienting...')
-    unknot = orient(unknot)
-    ## To avoid crossings occuring ontop of each other choose non-rational projections.
-    ## [pi, e, sqrt(2)] :)
-
-    # Q_invariant(unknot, 'Uq(sl2)').build_equation()
-
-    # breakpoint()
-
-    projections_111 = points_on_axis(unknot, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
-    projections_1m11 = points_on_axis(unknot, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
-    projections_11m1 = points_on_axis(unknot, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
-    projections_1m1m1 = points_on_axis(unknot, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
-    print('Computing writhe...')
-    print(np.sum(lattice_writhe_Klenin(unknot))/(np.pi**2))
-    print(lattice_writhe_Cimasoni(unknot,
-                                    projections_111=projections_111,
-                                    projections_1m11=projections_1m11,
-                                    projections_11m1=projections_11m1,
-                                    projections_1m1m1=projections_1m1m1))
-
-    ## run test pivot:
-    for i in range(0, 1000):
-        unknot = pivot(unknot, knot_type)
-
-    ## run BFACF for a bunch of timesteps
-    unknot, g_w = BFACF(array=unknot, timesteps=it, sampler=sampler)
-
-    for i in range(0, 1000):
-        unknot = pivot(unknot, knot_type)
-
-    # ## run BFACF for a bunch of timesteps
-    # unknot, g_w = BFACF(array=unknot, timesteps=it, sampler=sampler)
-
-    print('Final writhe...')
-
-    projections_111 = points_on_axis(unknot, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
-    projections_1m11 = points_on_axis(unknot, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
-    projections_11m1 = points_on_axis(unknot, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
-    projections_1m1m1 = points_on_axis(unknot, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
-
-    print(lattice_writhe_Cimasoni(unknot,
-                                projections_111=projections_111,
-                                projections_1m11=projections_1m11,
-                                projections_11m1=projections_11m1,
-                                projections_1m1m1=projections_1m1m1))
-    
-
-    for proj in [projections_111, projections_1m11, projections_11m1, projections_1m1m1]:
-        plt.plot([i[0] for i in proj],[i[1] for i in proj], linestyle = '-')
-
-        for pt in proj:
-            x, y = pt[0], pt[1]
-            value = pt[5]
-            plt.text(x, y, str(value), fontsize=9, ha='left', va='bottom')
-            '''
-            Also should print found crossings and analyse.
-            '''
+        R = np.array([
+            [ux**2*(1-np.cos(ang))+np.cos(ang), ux*uy*(1-np.cos(ang))-uz*np.sin(ang), ux*uz*(1-np.cos(ang))+uy*np.sin(ang)],
+            [ux*uy*(1-np.cos(ang))+uz*np.sin(ang), uy**2*(1-np.cos(ang))+np.cos(ang), uy*uz*(1-np.cos(ang))-ux*np.sin(ang)],
+            [ux*uz*(1-np.cos(ang))-uy*np.sin(ang), uy*uz*(1-np.cos(ang))+ux*np.sin(ang), uz**2*(1-np.cos(ang))+np.cos(ang)]])
         
-        plt.show()
+        for x in w1:
+            index = np.argwhere(array == x)
+            translated_index = index - pivot_point 
 
-    print(np.sum(lattice_writhe_Klenin(unknot))/(np.pi**2))
+            if len(translated_index)>0:
 
-    # save coords as required
-    coords = np.argwhere(unknot>0)
-    coord_dat = [(unknot[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
+                new_index = np.dot(R, translated_index[0])
+                new_index = np.round(new_index + pivot_point).astype(int) 
+                update_array[index[0][0]][index[0][1]][index[0][2]] = 0
+                update_array[new_index[0][0]][new_index[0][1]][new_index[0][2]] = x
 
-    # np.savetxt(f'examples/config_{knot_type}_WRTEST.csv', coord_dat, delimiter=",", fmt='%d')
+        status = check_verticies(update_array)
+        
+        if status < -2:
+            continue
+        else:
+            topo = Q_invariant(update_array, 'Uq(sl2)').alexander_polynomial(knot) 
+            if topo == True:
+                print(random_edge_1, random_edge_2)
 
-    plt.hist(g_w)
-    plt.xlabel('Writhe')
-    plt.ylabel('Frequency')
-    plt.title('Writhe Distribution Lattice Unknot')
-    plt.savefig(f'figs/writhe_distn_{knot_type}_WRTEST_Cimasoni_2')
+                r_o_g = radius_of_gyration(update_array)
+                projections_111 = points_on_axis(update_array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
+                projections_1m11 = points_on_axis(update_array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
+                projections_11m1 = points_on_axis(update_array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
+                projections_1m1m1 = points_on_axis(update_array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
 
-    if plot == True:
+                writhe_energy = lattice_writhe_Cimasoni(update_array, 
+                                                        projections_111=projections_111,
+                                                        projections_1m11=projections_1m11,
+                                                        projections_11m1=projections_11m1,
+                                                        projections_1m1m1=projections_1m1m1)
+                
+                positional_energy = positional_difference(array, update_array)
 
-        norm = mcolors.Normalize(vmin=np.min(unknot[unknot > 0]), vmax=np.max(unknot))
-        cmap = cm.coolwarm  
+                metrics['writhe'].append(writhe_energy)
+                metrics['radius_of_gyration'].append(r_o_g)
+                metrics['positional_difference'].append(positional_energy)
 
-        # Initialize color array
-        colors = np.zeros(unknot.shape + (4,))  # RGBA color array
-
-        # Apply colormap for nonzero values
-        mask = unknot > 0  
-        colors[mask] = cmap(norm(unknot[mask]))  
-
-        colors[..., 3] = np.where(unknot > 0, 1.0, 0.0)
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-
-        # Plot the voxels
-        ax.voxels(unknot > 0, facecolors=colors)
-
-        ax.set_xlim([0, 100])
-        ax.set_ylim([0, 100])
-        ax.set_zlim([0, 100])
-
-        plt.savefig(f'figs/tangle_{knot_type}')
-        plt.show()
-
-
-par = ArgumentParser()
-'''
-    Lets us specify arguements for the code.
-'''
-
-par.add_argument("-d", "--discretization", type=int, default=100, help="Discretization of state space y,z axis.")
-par.add_argument("-it", "--iterations", type=int, default=1000, help="Iterations of BFACF algorithm.")
-par.add_argument("-k", "--knot", type=str, default='0_1', help="Knot type.")
-par.add_argument("-s", "--sampler", type=str, default='Metropolis', help="Sampling method.")
-
-args = par.parse_args()
-
-if __name__ == "__main__":
-    discretization = args.discretization
-    it = args.iterations
-    knot_type = args.knot
-    sampler = args.sampler
-
-    main()
+                array = update_array
+            else:
+                continue
+    
+    return array, metrics

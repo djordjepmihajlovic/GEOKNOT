@@ -2,11 +2,8 @@ import numpy as np
 from numba import njit, prange
 from knot_init import *
 from quantum_knot_invs import *
-from multiprocessing import Pool
 import networkx as nx
-from numba.typed import List
 import random
-import copy
 
 '''
 BFACF/Pivot algorithm with Wang-Landau sampler implementation for flat wrt dos polygonal lattice knot embeddings.

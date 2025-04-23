@@ -56,7 +56,7 @@ def main():
 
     run_time = time.time() - start_time
     print(run_time)
-    
+
     for i, evolved in enumerate(results):
         # Save coordinates
         max_x = max(p[0] for p in evolved) + 1

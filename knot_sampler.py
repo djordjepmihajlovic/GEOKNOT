@@ -29,7 +29,7 @@ def process_sample(args):
 
     coords = np.argwhere(array>0)
     coord_dat = [(array[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
-    np.savetxt(f'examples/config_{knot_type}.csv', coord_dat, delimiter=",", fmt='%d')
+    np.savetxt(f'samples/{knot_type}_{i}.csv', coord_dat, delimiter=",", fmt='%d')
 
 
 def main():

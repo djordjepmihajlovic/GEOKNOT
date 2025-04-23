@@ -819,7 +819,6 @@ def pivot(array_dict, timesteps, knot):
                 update_dict[tuple(new_index)] = x 
 
         status = check_verticies(update_dict)
-        print(status)
         if invalid == True:
             status = -np.inf
         
@@ -850,7 +849,6 @@ def pivot(array_dict, timesteps, knot):
                 if metropolis_acceptance(old_energy=old_writhe_energy, new_energy=new_writhe_energy, temperature=0.01):
                     array_dict = update_dict
                     old_writhe_energy = new_writhe_energy
-                    print(random_edge_1, random_edge_2)
             
             else:
                 continue

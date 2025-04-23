@@ -19,17 +19,7 @@ def process_sample(args):
     evolved = pivot(oriented, timesteps=pivot_lag, knot=knot_type)
     evolved = BFACF(evolved, timesteps=BFACF_lag)
 
-    # Save coordinates
-    max_x = max(p[0] for p in evolved) + 1
-    max_y = max(p[1] for p in evolved) + 1
-    max_z = max(p[2] for p in evolved) + 1
-    array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
-    for (x, y, z), val in evolved.items():
-        array[x, y, z] = val
-
-    coords = np.argwhere(array>0)
-    coord_dat = [(array[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
-    np.savetxt(f'samples/{knot_type}_{i}.csv', coord_dat, delimiter=",", fmt='%d')
+    return evolved
 
 
 def main():
@@ -66,6 +56,19 @@ def main():
 
     run_time = time.time() - start_time
     print(run_time)
+    
+    for i, evolved in enumerate(results):
+        # Save coordinates
+        max_x = max(p[0] for p in evolved) + 1
+        max_y = max(p[1] for p in evolved) + 1
+        max_z = max(p[2] for p in evolved) + 1
+        array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
+        for (x, y, z), val in evolved.items():
+            array[x, y, z] = val
+
+        coords = np.argwhere(array>0)
+        coord_dat = [(array[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
+        np.savetxt(f'samples/{knot_type}_{i}.csv', coord_dat, delimiter=",", fmt='%d')
 
     writhe_dist = []
     r_o_g_dist = []

@@ -33,23 +33,23 @@ def main():
     We keep BFACF to take decorrelated samples and move them towards high writhe configurations.
     '''
 
-    # global knot_type, sampler  # Declare global variables for use in `process_sample`
+    global knot_type, sampler  # Declare global variables for use in `process_sample`
 
-    # state_space = np.zeros((discretization, discretization, discretization))
-    # knot = Knot(knot_type, state_space)
-    # unknot = knot.initialize()
-    # # orient knot
-    # print('Orienting...')
-    # unknot = orient(unknot)
+    state_space = np.zeros((discretization, discretization, discretization))
+    knot = Knot(knot_type, state_space)
+    unknot = knot.initialize()
+    # orient knot
+    print('Orienting...')
+    unknot = orient(unknot)
 
-    # start_time = time.time()
-    # args_list = [(i, unknot, knot_type, sampler) for i in range(samples)]
+    start_time = time.time()
+    args_list = [(i, unknot, knot_type, sampler) for i in range(samples)]
 
-    # with Pool(processes=num_processes) as pool:  # Use all available CPU cores
-    #     results = pool.map(process_sample, args_list)  # Parallelize over `samples`
+    with Pool(processes=num_processes) as pool:  # Use all available CPU cores
+        results = pool.map(process_sample, args_list)  # Parallelize over `samples`
 
-    # run_time = time.time() - start_time
-    # print(run_time)
+    run_time = time.time() - start_time
+    print(run_time)
 
     writhe_dist = []
     r_o_g_dist = []

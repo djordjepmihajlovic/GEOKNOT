@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 from knot_evolution import *
+import time
 
 def main():
 
@@ -11,8 +12,6 @@ def main():
     # orient knot
     print('Orienting...')
     unknot = orient(unknot)
-    ## To avoid crossings occuring ontop of each other choose non-rational projections.
-    ## [pi, e, sqrt(2)] :)
 
     projections_111 = points_on_axis(unknot, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
     projections_1m11 = points_on_axis(unknot, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
@@ -27,16 +26,11 @@ def main():
                                     projections_11m1=projections_11m1,
                                     projections_1m1m1=projections_1m1m1))
 
-    unknot = pivot(unknot, it, knot_type)
+    # unknot = pivot(unknot, it, knot_type)
+    start_time = time.time()
     unknot, g_w = BFACF(array=unknot, timesteps=it, sampler=sampler)
-
-    lags, autocorr = autocorrelation(g_w, lag=50)
-
-    plt.stem(lags, autocorr)
-    plt.xlabel("Lag")
-    plt.ylabel("Autocorrelation")
-    plt.title("Autocorrelation of Writhe Values")
-    plt.show()
+    end_time = time.time() - start_time
+    print(end_time)
 
     print('Final writhe...')
     projections_111 = points_on_axis(unknot, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 

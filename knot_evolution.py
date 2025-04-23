@@ -3,6 +3,8 @@ from numba import njit, prange
 from knot_init import *
 from quantum_knot_invs import *
 from multiprocessing import Pool
+import networkx as nx
+from numba.typed import List
 
 '''
 BFACF/Pivot algorithm with Wang-Landau sampler implementation for flat wrt dos polygonal lattice knot embeddings.
@@ -213,6 +215,16 @@ def check_verticies(array):
             ## rq. return of -2 (artifact from orientation)
 
     return status
+
+def build_correlation_graph(array):
+    '''
+    Build correlation graph between points for parallelization.
+    '''
+    indicies = np.argwhere(array > 0)
+    G = nx.Graph()
+
+    for idx, point in enumerate(indicies):
+        G.add_node(idx, coords=tuple(point))
 
 @njit()
 def crumple(array):
@@ -867,7 +879,7 @@ def BFACF(array, timesteps, sampler):
 
         alpha = 0.33
 
-        old_crumple_energy = crumple(array)
+        # old_crumple_energy = crumple(array)
 
         projections_111 = points_on_axis(array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
         projections_1m11 = points_on_axis(array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
@@ -883,7 +895,6 @@ def BFACF(array, timesteps, sampler):
         # old_energy = alpha * old_crumple_energy + alpha * old_writhe_energy 
         old_energy = old_writhe_energy
         
-        # old_energy = np.sum(lattice_writhe_Klenin(array))/(np.pi**2)
         accepted = 0
 
         for time in range(timesteps):
@@ -914,13 +925,6 @@ def BFACF(array, timesteps, sampler):
                                                     projections_1m11=projections_1m11,
                                                     projections_11m1=projections_11m1,
                                                     projections_1m1m1=projections_1m1m1)
-
-            # new_crumple_energy = crumple(update_array)
-
-            # new_positional_energy = positional_difference(array, update_array)
-            
-            # new_energy = alpha * new_crumple_energy + alpha * new_writhe_energy + alpha * new_positional_energy
-            # new_energy = np.sum(lattice_writhe_Klenin(update_array))/(np.pi**2)
             new_energy = new_writhe_energy
 
             if status < -2:

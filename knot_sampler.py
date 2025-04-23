@@ -6,6 +6,7 @@ import time
 from multiprocessing import Pool
 import os
 
+
 def process_sample(args):
     """
     Function to process a single sample in parallel.

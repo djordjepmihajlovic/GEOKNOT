@@ -26,9 +26,10 @@ def main():
                                     projections_11m1=projections_11m1,
                                     projections_1m1m1=projections_1m1m1))
 
-    # unknot = pivot(unknot, it, knot_type)
+
     start_time = time.time()
-    unknot, g_w = BFACF(array=unknot, timesteps=it, sampler=sampler)
+    # unknot, g_w = BFACF(array=unknot, timesteps=it, sampler=sampler)
+    unknot = pivot(unknot, it, knot_type)
     end_time = time.time() - start_time
     print(end_time)
 
@@ -53,12 +54,6 @@ def main():
     coord_dat = [(unknot[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
 
     np.savetxt(f'examples/config_{knot_type}_WRTEST.csv', coord_dat, delimiter=",", fmt='%d')
-
-    plt.hist(g_w)
-    plt.xlabel('Writhe')
-    plt.ylabel('Frequency')
-    plt.title('Writhe Distribution Lattice Unknot')
-    plt.savefig(f'figs/writhe_distn_{knot_type}_WRTEST_Cimasoni_2')
     
     plot_3d(unknot)
 

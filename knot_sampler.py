@@ -1,30 +1,35 @@
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
-from knot_evolution import *
+from knot_evolution_hash import *
 from knot_reader import read
 import time
 from multiprocessing import Pool
 import os
 
-
 def process_sample(args):
     """
     Function to process a single sample in parallel.
     """
-    i, unknot, knot_type, sampler = args 
-    knot_copy = unknot.copy()
-    pivot_lag = 500
-    BFACF_lag = 1000
+    i, unknot, knot_type = args 
+    oriented = dict(unknot)
+    pivot_lag = 1000
+    BFACF_lag = 10000
 
     # Perform pivot and BFACF
-    knot_copy = pivot(knot_copy, pivot_lag, knot_type)
-    knot_copy, g_w = BFACF(array=knot_copy, timesteps=BFACF_lag, sampler=sampler)
+    evolved = pivot(oriented, timesteps=pivot_lag, knot=knot_type)
+    evolved = BFACF(evolved, timesteps=BFACF_lag)
 
     # Save coordinates
-    coords = np.argwhere(knot_copy > 0)
-    coord_dat = [(knot_copy[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
-    output_file = f'samples/{knot_type}_{i}.csv'
-    np.savetxt(output_file, coord_dat, delimiter=",", fmt='%d')
+    max_x = max(p[0] for p in evolved) + 1
+    max_y = max(p[1] for p in evolved) + 1
+    max_z = max(p[2] for p in evolved) + 1
+    array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
+    for (x, y, z), val in evolved.items():
+        array[x, y, z] = val
+
+    coords = np.argwhere(array>0)
+    coord_dat = [(array[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
+    np.savetxt(f'examples/config_{knot_type}.csv', coord_dat, delimiter=",", fmt='%d')
 
 
 def main():
@@ -34,17 +39,27 @@ def main():
     We keep BFACF to take decorrelated samples and move them towards high writhe configurations.
     '''
 
-    global knot_type, sampler  # Declare global variables for use in `process_sample`
+    global knot_type  # Declare global variables for use in `process_sample`
 
     state_space = np.zeros((discretization, discretization, discretization))
     knot = Knot(knot_type, state_space)
     unknot = knot.initialize()
-    # orient knot
+
+    print('Hashing...')
+    array_dict = {}
+    iter = np.nditer(unknot, flags=['multi_index'])
+    for val in iter:
+        if val != 0:
+            array_dict[iter.multi_index] = val.item()
+
     print('Orienting...')
-    unknot = orient(unknot)
+    oriented = orient(array_dict)
+    for key, value in oriented.items():
+        if value == 1.0:
+            oriented[key] = 1  # orientation float issue
 
     start_time = time.time()
-    args_list = [(i, unknot, knot_type, sampler) for i in range(samples)]
+    args_list = [(i, unknot, knot_type) for i in range(samples)]
 
     with Pool(processes=num_processes) as pool:  # Use all available CPU cores
         results = pool.map(process_sample, args_list)  # Parallelize over `samples`

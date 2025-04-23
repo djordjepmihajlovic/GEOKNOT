@@ -232,9 +232,9 @@ class Q_invariant:
         '''
         self.array = array
         self.q_group = q_group
-        self.axis = np.array([np.pi, -np.e/2, np.sqrt(2)/2])
-        self.projection = points_on_axis(self.array, self.axis)
-        scan(self.projection)
+        # self.axis = np.array([np.pi, -np.e/2, np.sqrt(2)/2])
+        # self.projection = points_on_axis(self.array, self.axis)
+        # scan(self.projection)
 
 
     def build_equation(self):
@@ -415,6 +415,7 @@ class Q_invariant:
         '''
 
         index = np.argwhere(self.array>0)
+        # easy change to dicts
         elements = []
         for i in index:
             elements.append([self.array[i[0]][i[1]][i[2]], i[0], i[1], i[2]])
@@ -451,3 +452,48 @@ class Q_invariant:
                 
         print(x)
         return l
+    
+    def alexander_polynomial_hash(self, knot):
+        '''
+        KymoKnot: https://github.com/luca-tubiana/KymoKnot
+        '''
+
+        index = [pos for pos, val in self.array.items() if val > 0]
+        # easy change to dicts
+        elements = []
+        for i in index:
+            elements.append([self.array[i], i[0], i[1], i[2]])
+        
+        elements = sorted(elements, key=lambda x: x[0])
+        elements.append(elements[0])
+        
+        joggle_scale = 1e-4
+        elements = [np.array([i[1:4] for i in elements], dtype=float) +
+        np.random.normal(scale=joggle_scale, size=(len(elements), 3))]
+
+        kl = kymoknot.KymoKnotSearch(
+        seed=0,
+        closure_type=kymoknot.CL_QHULLHYB,
+        close_subchain=kymoknot.CL_QHULLHYB,
+        search_type=[SearchType.BU],
+        )
+
+        chain_res = kl.search(elements, kymoknot.INP_LINEAR)
+        res = chain_res[SearchType.BU]
+
+        x = knot
+        for ke in res[0]:
+            p = ke.knot_ids
+            p = p[3:]
+            p = ''.join(p.split())
+            x = ''.join(x.split())
+            if p == 'UN':
+                p = '0_1'
+            if p == x:
+                l = True
+            else:
+                l = False
+                
+        print(x)
+        return l
+    

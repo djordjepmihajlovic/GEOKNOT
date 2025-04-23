@@ -116,7 +116,7 @@ def main():
     try:
         steps = 0
         max_steps = 1000
-        points_per_round = 10
+        # points_per_round = 10
 
         while steps < max_steps:
             print(f"Progress: {steps}/{max_steps}")
@@ -125,10 +125,7 @@ def main():
 
             # Flatten all independent sets into a list of coords
             all_points = [pt for s in indep_sets for pt in s]
-            if len(all_points) > points_per_round:
-                sampled_points = random.sample(all_points, points_per_round)
-            else:
-                sampled_points = all_points
+            sampled_points = all_points
 
             # Wrap into single "chunk" for map
             # pool.map expects a list of iterables, so we wrap into one chunk

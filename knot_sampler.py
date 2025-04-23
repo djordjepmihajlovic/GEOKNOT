@@ -59,7 +59,7 @@ def main():
             oriented[key] = 1  # orientation float issue
 
     start_time = time.time()
-    args_list = [(i, unknot, knot_type) for i in range(samples)]
+    args_list = [(i, oriented, knot_type) for i in range(samples)]
 
     with Pool(processes=num_processes) as pool:  # Use all available CPU cores
         results = pool.map(process_sample, args_list)  # Parallelize over `samples`

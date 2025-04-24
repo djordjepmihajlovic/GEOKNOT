@@ -186,7 +186,7 @@ def main():
 
             if entang > max_entang:
                 max_entang = entang
-                print (f"max entang: {min_entang}, {i}")
+                print (f"max entang: {max_entang}, {i}")
 
             if entang < min_entang:
                 min_entang = entang

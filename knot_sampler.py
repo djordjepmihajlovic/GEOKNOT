@@ -74,9 +74,9 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, rog_bins, sub_samples
 
 def process_wang_landau(args):
 
-    i, oriented, knot_type, writhe_bins, rog_bins = args
+    i, oriented, knot_type, writhe_bins, rog_bins, sub_samples = args
 
-    g, sampled_states = wang_landau_sampling(oriented, knot_type, writhe_bins, rog_bins)
+    g, sampled_states = wang_landau_sampling(oriented, knot_type, writhe_bins, rog_bins, sub_samples)
 
     return g, sampled_states
 

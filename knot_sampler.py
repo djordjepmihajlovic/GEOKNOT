@@ -112,7 +112,7 @@ def main():
         if value == 1.0:
             oriented[key] = 1  # orientation float issue
     
-    sub_samples = 1
+    sub_samples = 10
 
     start_time = time.time()
 

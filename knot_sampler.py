@@ -5,6 +5,7 @@ from knot_reader import read
 import time
 from multiprocessing import Pool
 import os
+import math
 
 def process_sample(args):
     """
@@ -20,6 +21,17 @@ def process_sample(args):
     evolved = BFACF(evolved, timesteps=BFACF_lag)
 
     return evolved
+
+def wang_landau_sampling(oriented, knot_type, writhe_bins, rog_bins, f_init=math.e, flatness_crit=0.8):
+
+    g = np.zeros((writhe_bins, rog_bins))
+    H = np.zeros((writhe_bins, rog_bins))
+    f = f_init
+    pivot_lag = 500
+    BFACF_lag = 5000
+
+    writhe_range = ()
+
 
 
 def main():
@@ -72,8 +84,10 @@ def main():
 
     writhe_dist = []
     r_o_g_dist = []
+    l_writhe = 0
 
     for i in range(samples):
+
         print(f'Checking: {i}')
         file = np.loadtxt(f'samples/{knot_type}_{i}.csv', delimiter=',', dtype=int)
         load = read(file)
@@ -88,6 +102,10 @@ def main():
                                                projections_11m1=projections_1m11,
                                                projections_1m11=projections_11m1,
                                                projections_1m1m1=projections_1m1m1)
+        
+        if writhe > l_writhe:
+            print(writhe, i)
+            l_writhe = writhe
         
         r_o_g = radius_of_gyration(array)
         writhe_dist.append(writhe)

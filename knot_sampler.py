@@ -42,6 +42,10 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, rog_bins, sub_samples
     def get_bin_indices(writhe, rog):
         writhe_idx = np.digitize(writhe, writhe_edges) - 1
         rog_idx = np.digitize(rog, rog_edges) - 1
+
+        # Clip indices to ensure they are within valid bounds
+        writhe_idx = np.clip(writhe_idx, 0, writhe_bins - 1)
+        rog_idx = np.clip(rog_idx, 0, rog_bins - 1)
         return writhe_idx, rog_idx
     
     current_state = oriented

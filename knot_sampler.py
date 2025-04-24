@@ -6,6 +6,7 @@ import time
 from multiprocessing import Pool
 import os
 import math
+import numpy as np
 
 def process_sample(args):
     """
@@ -22,7 +23,8 @@ def process_sample(args):
 
     return evolved
 
-def wang_landau_sampling(oriented, knot_type, writhe_bins, rog_bins, f_init=math.e, flatness_crit=0.8):
+
+def wang_landau_sampling(oriented, knot_type, writhe_bins, rog_bins, sub_samples, f_init=math.e, flatness_crit=0.8):
 
     g = np.zeros((writhe_bins, rog_bins))
     H = np.zeros((writhe_bins, rog_bins))
@@ -30,8 +32,53 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, rog_bins, f_init=math
     pivot_lag = 500
     BFACF_lag = 5000
 
-    writhe_range = ()
+    writhe_range = (-12, +12)
+    rog_range = (6, 15)
 
+    writhe_edges = np.linspace(*writhe_range, writhe_bins + 1)
+    rog_edges = np.linspace(*rog_range, rog_bins + 1)
+
+    def get_bin_indices(writhe, rog):
+        writhe_idx = np.digitize(writhe, writhe_edges) - 1
+        rog_idx = np.digitize(rog, rog_edges) - 1
+        return writhe_idx, rog_idx
+    
+    current_state = oriented
+    current_writhe = 0
+    current_rog = 0
+    sampled_states = []
+
+    while len(sampled_states) < sub_samples:
+
+        proposed_state = pivot(current_state, timesteps=pivot_lag, knot=knot_type)
+        proposed_state, proposed_writhe, proposed_rog = BFACF(proposed_state, timesteps=BFACF_lag)
+
+        current_bin = get_bin_indices(current_writhe, current_rog)
+        proposed_bin = get_bin_indices(proposed_writhe, proposed_rog)
+
+        if g[proposed_bin] <= g[current_bin] or np.random.rand() < math.exp(g[current_bin] - g[proposed_bin]):
+
+            current_writhe = proposed_writhe
+            current_rog = proposed_rog
+            current_bin = proposed_bin
+            sampled_states.append(proposed_state)
+
+        g[current_bin] += math.log(f)
+        H[current_bin] += 1
+
+        if np.min(H) > flatness_crit * np.mean(H):
+            H.fill(0)
+            f = math.sqrt(f)
+        
+    return g, sampled_states
+
+def process_wang_landau(args):
+
+    i, oriented, knot_type, writhe_bins, rog_bins = args
+
+    g, sampled_states = wang_landau_sampling(oriented, knot_type, writhe_bins, rog_bins)
+
+    return g, sampled_states
 
 
 def main():
@@ -41,71 +88,77 @@ def main():
     We keep BFACF to take decorrelated samples and move them towards high writhe configurations.
     '''
 
-    # global knot_type  # Declare global variables for use in `process_sample`
+    state_space = np.zeros((discretization, discretization, discretization))
+    knot = Knot(knot_type, state_space)
+    unknot = knot.initialize()
 
-    # state_space = np.zeros((discretization, discretization, discretization))
-    # knot = Knot(knot_type, state_space)
-    # unknot = knot.initialize()
+    print('Hashing...')
+    array_dict = {}
+    iter = np.nditer(unknot, flags=['multi_index'])
+    for val in iter:
+        if val != 0:
+            array_dict[iter.multi_index] = val.item()
 
-    # print('Hashing...')
-    # array_dict = {}
-    # iter = np.nditer(unknot, flags=['multi_index'])
-    # for val in iter:
-    #     if val != 0:
-    #         array_dict[iter.multi_index] = val.item()
+    print('Orienting...')
+    oriented = orient(array_dict)
+    for key, value in oriented.items():
+        if value == 1.0:
+            oriented[key] = 1  # orientation float issue
+    
+    sub_samples = 10
 
-    # print('Orienting...')
-    # oriented = orient(array_dict)
-    # for key, value in oriented.items():
-    #     if value == 1.0:
-    #         oriented[key] = 1  # orientation float issue
+    start_time = time.time()
 
-    # start_time = time.time()
-    # args_list = [(i, oriented, knot_type) for i in range(samples)]
+    writhe_bins = 10
+    rog_bins = 10
 
-    # with Pool(processes=num_processes) as pool:  # Use all available CPU cores
-    #     results = pool.map(process_sample, args_list)  # Parallelize over `samples`
+    args_list = [(i, oriented, knot_type, writhe_bins, rog_bins, sub_samples) for i in range(samples)]
 
-    # run_time = time.time() - start_time
-    # print(run_time)
+    with Pool(processes=num_processes) as pool: 
+        dos, results = pool.map(process_wang_landau, args_list)  # Parallelize over `samples`
 
-    # for i, evolved in enumerate(results):
-    #     # Save coordinates
-    #     max_x = max(p[0] for p in evolved) + 1
-    #     max_y = max(p[1] for p in evolved) + 1
-    #     max_z = max(p[2] for p in evolved) + 1
-    #     array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
-    #     for (x, y, z), val in evolved.items():
-    #         array[x, y, z] = val
+    run_time = time.time() - start_time
+    print(run_time)
 
-    #     coords = np.argwhere(array>0)
-    #     coord_dat = [(array[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
-    #     np.savetxt(f'samples/{knot_type}_{i}.csv', coord_dat, delimiter=",", fmt='%d')
+    for i, evolved in enumerate(results):
+        # Save coordinates
+        for j, state in enumerate(evolved):
+            max_x = max(p[0] for p in state) + 1
+            max_y = max(p[1] for p in state) + 1
+            max_z = max(p[2] for p in state) + 1
+            array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
+            for (x, y, z), val in state.items():
+                array[x, y, z] = val
+
+            coords = np.argwhere(array>0)
+            coord_dat = [(array[p[0], p[1], p[2]], p[0], p[1], p[2]) for p in coords]
+            np.savetxt(f'samples/{knot_type}_{i}_{j}.csv', coord_dat, delimiter=",", fmt='%d')
 
     writhe_dist = []
     r_o_g_dist = []
     l_writhe = 0
 
     for i in range(samples):
+        for j in range(sub_samples):
 
-        print(f'Checking: {i}')
-        file = np.loadtxt(f'samples/{knot_type}_{i}.csv', delimiter=',', dtype=int)
-        load = read(file)
-        array = load.copy()
-        projections_111 = points_on_axis(array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
-        projections_1m11 = points_on_axis(array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
-        projections_11m1 = points_on_axis(array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
-        projections_1m1m1 = points_on_axis(array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
+            print(f'Checking: {i},{j}')
+            file = np.loadtxt(f'samples/{knot_type}_{i}_{j}.csv', delimiter=',', dtype=int)
+            load = read(file)
+            array = load.copy()
+            projections_111 = points_on_axis(array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
+            projections_1m11 = points_on_axis(array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
+            projections_11m1 = points_on_axis(array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
+            projections_1m1m1 = points_on_axis(array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
 
-        writhe = lattice_writhe_Cimasoni(array, 
-                                               projections_111=projections_111, 
-                                               projections_11m1=projections_1m11,
-                                               projections_1m11=projections_11m1,
-                                               projections_1m1m1=projections_1m1m1)
-        
-        if writhe > l_writhe:
-            print(writhe, i)
-            l_writhe = writhe
+            writhe = lattice_writhe_Cimasoni(array, 
+                                                projections_111=projections_111, 
+                                                projections_11m1=projections_1m11,
+                                                projections_1m11=projections_11m1,
+                                                projections_1m1m1=projections_1m1m1)
+            
+            if writhe > l_writhe:
+                print(writhe, i)
+                l_writhe = writhe
         
         r_o_g = radius_of_gyration(array)
         writhe_dist.append(writhe)
@@ -113,11 +166,11 @@ def main():
         
 
     plt.hist(writhe_dist)
-    plt.savefig('samples/writhe_dist_samples')
+    plt.savefig('samples/writhe_dist_samples.png')
     plt.clf()
 
     plt.hist(r_o_g_dist)
-    plt.savefig('samples/r_o_g_dist_samples')
+    plt.savefig('samples/r_o_g_dist_samples.png')
     plt.clf()
 
 par = ArgumentParser()

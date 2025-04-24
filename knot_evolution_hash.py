@@ -742,10 +742,11 @@ def BFACF(array_dict, timesteps):
 
             if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=0.01):
                 array_dict = update_array
+                old_crumple_energy = new_crumple_energy
+                old_writhe_energy = new_writhe_energy
                 old_energy = new_energy
 
-    print(new_energy)
-    return array_dict
+    return array_dict, old_writhe_energy, old_crumple_energy
         
 def pivot(array_dict, timesteps, knot):
     '''

@@ -52,11 +52,12 @@ def main():
     coords = np.argwhere(array>0)
     coord_dat = [(array[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
 
-    plt.imshow(lattice_writhe_Klenin(array))
+    im = lattice_writhe_Klenin(array)
+    print(np.sum(im))
+    plt.imshow(im)
 
     np.savetxt(f'examples/config_{knot_type}.csv', coord_dat, delimiter=",", fmt='%d')
     plot_3d_line(array)
-
 
 par = ArgumentParser()
 '''

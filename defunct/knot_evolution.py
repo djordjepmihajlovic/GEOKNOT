@@ -693,6 +693,7 @@ def lattice_writhe_Klenin(array):
         # Loop on the second ring
         for j in prange(ring2.shape[0]):
             matrix[i,j] = compute_single_sts_writhe(ring1, ring2, i, j, 2)
+        print(i)
     return matrix
 
 

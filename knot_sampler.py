@@ -96,56 +96,59 @@ def main():
     We keep BFACF to take decorrelated samples and move them towards high writhe configurations.
     '''
 
-    state_space = np.zeros((discretization, discretization, discretization))
-    knot = Knot(knot_type, state_space)
-    unknot = knot.initialize()
+    # state_space = np.zeros((discretization, discretization, discretization))
+    # knot = Knot(knot_type, state_space)
+    # unknot = knot.initialize()
 
-    print('Hashing...')
-    array_dict = {}
-    iter = np.nditer(unknot, flags=['multi_index'])
-    for val in iter:
-        if val != 0:
-            array_dict[iter.multi_index] = val.item()
+    # print('Hashing...')
+    # array_dict = {}
+    # iter = np.nditer(unknot, flags=['multi_index'])
+    # for val in iter:
+    #     if val != 0:
+    #         array_dict[iter.multi_index] = val.item()
 
-    print('Orienting...')
-    oriented = orient(array_dict)
-    for key, value in oriented.items():
-        if value == 1.0:
-            oriented[key] = 1  # orientation float issue
+    # print('Orienting...')
+    # oriented = orient(array_dict)
+    # for key, value in oriented.items():
+    #     if value == 1.0:
+    #         oriented[key] = 1  # orientation float issue
 
-    start_time = time.time()
+    # start_time = time.time()
 
-    writhe_bins = 10
-    rog_bins = 10
+    # writhe_bins = 10
+    # rog_bins = 10
 
-    args_list = [(i, oriented, knot_type, writhe_bins, rog_bins, sub_samples) for i in range(samples)]
+    # args_list = [(i, oriented, knot_type, writhe_bins, rog_bins, sub_samples) for i in range(samples)]
 
-    with Pool(processes=num_processes) as pool: 
-        results = pool.map(process_wang_landau, args_list)  # Parallelize over `samples`
+    # with Pool(processes=num_processes) as pool: 
+    #     results = pool.map(process_wang_landau, args_list)  # Parallelize over `samples`
 
-    run_time = time.time() - start_time
-    print(run_time)
+    # run_time = time.time() - start_time
+    # print(run_time)
 
-    dos = [r[0] for r in results]          # list of all g arrays
-    sampled_results = [r[1] for r in results] 
+    # dos = [r[0] for r in results]          # list of all g arrays
+    # sampled_results = [r[1] for r in results] 
 
-    for i, evolved in enumerate(sampled_results):
-        # Save coordinates
-        for j, state in enumerate(evolved):
-            max_x = max(p[0] for p in state) + 1
-            max_y = max(p[1] for p in state) + 1
-            max_z = max(p[2] for p in state) + 1
-            array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
-            for (x, y, z), val in state.items():
-                array[x, y, z] = val
+    # for i, evolved in enumerate(sampled_results):
+    #     # Save coordinates
+    #     for j, state in enumerate(evolved):
+    #         max_x = max(p[0] for p in state) + 1
+    #         max_y = max(p[1] for p in state) + 1
+    #         max_z = max(p[2] for p in state) + 1
+    #         array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
+    #         for (x, y, z), val in state.items():
+    #             array[x, y, z] = val
 
-            coords = np.argwhere(array>0)
-            coord_dat = [(array[p[0], p[1], p[2]], p[0], p[1], p[2]) for p in coords]
-            np.savetxt(f'samples/{knot_type}_{i}_{j}.csv', coord_dat, delimiter=",", fmt='%d')
+    #         coords = np.argwhere(array>0)
+    #         coord_dat = [(array[p[0], p[1], p[2]], p[0], p[1], p[2]) for p in coords]
+    #         np.savetxt(f'samples/{knot_type}_{i}_{j}.csv', coord_dat, delimiter=",", fmt='%d')
 
     writhe_dist = []
     entang_dist = []
-    l_writhe = 0
+    max_writhe = 0
+    max_entang = 0
+    min_writhe = 500
+    min_entang = 500
 
     for i in range(samples):
         for j in range(sub_samples):
@@ -166,9 +169,12 @@ def main():
                                                 projections_1m11=projections_11m1,
                                                 projections_1m1m1=projections_1m1m1)
             
-            if writhe > l_writhe:
-                print(writhe, i)
-                l_writhe = writhe
+            if writhe > max_writhe:
+                max_writhe = writhe
+                print (f"max wr: {max_writhe}, {i}")
+            if writhe < min_writhe:
+                min_writhe = writhe
+                print(f"min wr: {min_writhe}, {i}")
         
             entang_dict = {}
             iter = np.nditer(array, flags=['multi_index'])
@@ -177,6 +183,16 @@ def main():
                     entang_dict[iter.multi_index] = val.item()
 
             entang = long_range_entanglement(entang_dict)
+
+            if entang > max_entang:
+                max_entang = entang
+                print (f"max wr: {min_entang}, {i}")
+
+            if entang < min_entang:
+                min_entang = entang
+                print (f"max wr: {min_entang}, {i}")
+
+
             writhe_dist.append(writhe)
             entang_dist.append(entang)
 

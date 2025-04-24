@@ -26,10 +26,10 @@ def main():
     print('Running pivot...')
     start_time = time.time()
     # pivot
-    evolved = pivot(oriented, timesteps=it, knot=knot_type)
+    evolved = pivot(oriented, timesteps=it*10, knot=knot_type)
     # bfacf (10x pivot)
     print('Running bfacf...')
-    evolved = BFACF(evolved, timesteps=it*10)
+    evolved, wr, rog = BFACF(evolved, timesteps=it)
     end_time = time.time() - start_time
     print("Simulation time:", end_time)
 

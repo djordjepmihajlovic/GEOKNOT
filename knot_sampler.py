@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 from knot_evolution_hash import *
 from knot_reader import read
+from quantum_knot_invs import *
 import time
 from multiprocessing import Pool
 import os
@@ -14,7 +15,7 @@ def process_sample(args):
     """
     i, unknot, knot_type = args 
     oriented = dict(unknot)
-    pivot_lag = 1000
+    pivot_lag = 10000
     BFACF_lag = 10000
 
     # Perform pivot and BFACF
@@ -29,7 +30,7 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, rog_bins, sub_samples
     g = np.zeros((writhe_bins, rog_bins))
     H = np.zeros((writhe_bins, rog_bins))
     f = f_init
-    pivot_lag = 500
+    pivot_lag = 1000
     BFACF_lag = 5000
 
     writhe_range = (-12, +12)
@@ -58,10 +59,12 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, rog_bins, sub_samples
 
         if g[proposed_bin] <= g[current_bin] or np.random.rand() < math.exp(g[current_bin] - g[proposed_bin]):
 
-            current_writhe = proposed_writhe
-            current_rog = proposed_rog
-            current_bin = proposed_bin
-            sampled_states.append(proposed_state)
+            topo = Q_invariant(proposed_writhe, 'Uq(sl2)').alexander_polynomial_hash(knot_type) 
+            if topo == True:
+                current_writhe = proposed_writhe
+                current_rog = proposed_rog
+                current_bin = proposed_bin
+                sampled_states.append(proposed_state)
 
         g[current_bin] += math.log(f)
         H[current_bin] += 1
@@ -105,7 +108,7 @@ def main():
         if value == 1.0:
             oriented[key] = 1  # orientation float issue
     
-    sub_samples = 10
+    sub_samples = 1
 
     start_time = time.time()
 

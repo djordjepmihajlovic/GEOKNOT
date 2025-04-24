@@ -1,6 +1,6 @@
 import numpy as np
 from knot_init import *
-from knot_evolution import *
+from defunct.knot_evolution import *
 from quantum_knot_invs import *
 import ctypes
 import os

@@ -495,5 +495,6 @@ class Q_invariant:
                 l = False
                 
         print(x)
+        print(p)
         return l
     

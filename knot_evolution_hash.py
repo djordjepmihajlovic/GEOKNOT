@@ -226,6 +226,63 @@ def crumple(array_dict):
 
     return energy
 
+# def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshold = 3, samples = 20):
+
+#     coords = list(array_dict.keys())
+#     vals = [array_dict[c] for c in coords]
+#     score = 0
+#     valid_pairs = []
+
+#     # First collect all possible long-range pairs
+#     for i in range(len(coords)):
+#         for j in range(i + 1, len(coords)):
+#             if abs(vals[i] - vals[j]) >= sequence_threshold:
+#                 valid_pairs.append((i, j))
+
+#     # If there are fewer than `samples` valid pairs, use all
+#     sample_pairs = random.sample(valid_pairs, min(samples, len(valid_pairs)))
+
+#     for i, j in sample_pairs:
+#         spatial_dist = np.sqrt(
+#             (coords[i][0] - coords[j][0]) ** 2 +
+#             (coords[i][1] - coords[j][1]) ** 2 +
+#             (coords[i][2] - coords[j][2]) ** 2
+#         )
+#         if spatial_dist <= distance_threshold:
+#             score += 1
+
+#     return score
+
+def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshold=3):
+    '''
+    Measures spatial proximity between distant points in sequence.
+    
+    - sequence_threshold: minimum "sequence" distance between points to be considered long-range
+    - distance_threshold: maximum Euclidean distance in space to count as close contact
+    Returns:
+    - A score counting long-range spatial entanglements
+    '''
+
+    coords = list(array_dict.keys())
+    vals = [array_dict[c] for c in coords]
+    score = 0
+    total_points = len(vals)
+
+    for i in range(len(coords)):
+        for j in range(i + 1, len(coords)):
+            # Our knot is cyclic
+            sequence_dist = min(abs(vals[i] - vals[j]), total_points - abs(vals[i] - vals[j]))
+            if sequence_dist >= sequence_threshold:
+                # Euclideian distance
+                spatial_dist = np.sqrt(
+                    (coords[i][0] - coords[j][0]) ** 2 +
+                    (coords[i][1] - coords[j][1]) ** 2 +
+                    (coords[i][2] - coords[j][2]) ** 2
+                )
+                if spatial_dist <= distance_threshold:
+                    score += 1
+    return score
+
 def radius_of_gyration(array):
     indicies = np.argwhere(array>0)
     center_of_mass = np.mean(indicies, axis=0)
@@ -549,7 +606,7 @@ def points_on_axis(array, axis):
 
 
 @njit()
-def lattice_writhe_Cimasoni(array, projections_111, projections_1m11, projections_11m1, projections_1m1m1):
+def lattice_writhe_Cimasoni(array, no_points, projections_111, projections_1m11, projections_11m1, projections_1m1m1):
     '''
     Want to explore Tait numbers T(A_{i}) on the 4 areas (8 areas modulo symmetry) on the indicatrix corresponding to projections on: 
     (pi, e/2, sqrt(2)/2), (pi, -e/2, sqrt(2)/2), (pi, e/2, -sqrt(2)/2), (pi, -e/2, -sqrt(2)/2).
@@ -558,6 +615,7 @@ def lattice_writhe_Cimasoni(array, projections_111, projections_1m11, projection
 
     TA = 0
     projections = np.stack((projections_111, projections_1m11, projections_11m1, projections_1m1m1))
+    lens = no_points
 
     for x_th, x_th_proj in enumerate(projections):
 
@@ -660,9 +718,9 @@ def lattice_writhe_Cimasoni(array, projections_111, projections_1m11, projection
                                 sign = sign_distance * sign_vector_orientation
                                 # rh, lh convention
                                 if sign > 0:
-                                    wr -= 1 # * (abs(val1-val2)%(len(np.argwhere(array>1))/2))/(np.linalg.norm(distance))
+                                    wr -= 1 * (abs(val1-val2)%(lens))/(np.linalg.norm(distance))
                                 elif sign < 0: 
-                                    wr += 1 # * (abs(val1-val2)%(len(np.argwhere(array>1))/2))/(np.linalg.norm(distance))
+                                    wr += 1 * (abs(val1-val2)%(lens))/(np.linalg.norm(distance))
 
         TA += wr
     TA = TA/4
@@ -672,9 +730,10 @@ def BFACF(array_dict, timesteps):
     '''
     BFACF with chosen sampling methods
     '''
-    alpha = 0
+    alpha = 0.5
 
     init_array = dict(array_dict)
+    no_points = len(init_array)
     max_x = max(p[0] for p in init_array) + 1
     max_y = max(p[1] for p in init_array) + 1
     max_z = max(p[2] for p in init_array) + 1
@@ -687,15 +746,15 @@ def BFACF(array_dict, timesteps):
     projections_11m1 = points_on_axis(init2array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
     projections_1m1m1 = points_on_axis(init2array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
 
-    old_writhe_energy = lattice_writhe_Cimasoni(init2array, 
+    old_writhe_energy = lattice_writhe_Cimasoni(init2array, no_points, 
                                             projections_111=projections_111,
                                             projections_1m11=projections_1m11,
                                             projections_11m1=projections_11m1,
                                             projections_1m1m1=projections_1m1m1)
     
-    old_crumple_energy = crumple(init_array)
+    old_entanglement_energy = long_range_entanglement(init_array)
     
-    old_energy = alpha * old_crumple_energy + (1-alpha) * old_writhe_energy
+    old_energy = alpha * old_entanglement_energy + (1-alpha) * old_writhe_energy
 
     for time in range(timesteps):
         
@@ -730,33 +789,32 @@ def BFACF(array_dict, timesteps):
             projections_11m1 = points_on_axis(update2array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
             projections_1m1m1 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
 
-            new_writhe_energy = lattice_writhe_Cimasoni(update2array, 
+            new_writhe_energy = lattice_writhe_Cimasoni(update2array, no_points, 
                                                     projections_111=projections_111,
                                                     projections_1m11=projections_1m11,
                                                     projections_11m1=projections_11m1,
                                                     projections_1m1m1=projections_1m1m1)
             
-            new_crumple_energy = crumple(update_array)
-            new_energy = alpha * new_crumple_energy + (1-alpha) * new_writhe_energy
+            new_entanglement_energy = long_range_entanglement(update_array)
+            new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
             
 
             if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=0.01):
                 array_dict = update_array
-                old_crumple_energy = new_crumple_energy
+                old_entanglement_energy = new_entanglement_energy
                 old_writhe_energy = new_writhe_energy
                 old_energy = new_energy
 
-    return array_dict, old_writhe_energy, old_crumple_energy
+    return array_dict, old_writhe_energy, old_entanglement_energy
         
 def pivot(array_dict, timesteps, knot):
     '''
     Pivot algorithm to increase autocorrelation of samples.
     Notice: valid pivots occur on a shared axis in Z^{3}
-    Can implement writhe here to try pivot to more writhed config.
-    Need to change so that it uses dictionary for speed.
     '''
 
     init_array = dict(array_dict)
+    no_points = len(init_array)
     max_x = max(p[0] for p in init_array) + 1
     max_y = max(p[1] for p in init_array) + 1
     max_z = max(p[2] for p in init_array) + 1
@@ -769,7 +827,7 @@ def pivot(array_dict, timesteps, knot):
     projections_11m1 = points_on_axis(init2array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
     projections_1m1m1 = points_on_axis(init2array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
 
-    old_writhe_energy = lattice_writhe_Cimasoni(init2array, 
+    old_writhe_energy = lattice_writhe_Cimasoni(init2array, no_points,
                                             projections_111=projections_111,
                                             projections_1m11=projections_1m11,
                                             projections_11m1=projections_11m1,
@@ -824,6 +882,7 @@ def pivot(array_dict, timesteps, knot):
         if status < -2:
             continue
         else:
+            # check topo after
             # topo = Q_invariant(update_dict, 'Uq(sl2)').alexander_polynomial_hash(knot) 
             # if topo == True:
             max_x = max(p[0] for p in update_dict) + 1
@@ -838,7 +897,7 @@ def pivot(array_dict, timesteps, knot):
             projections_11m1 = points_on_axis(update2array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
             projections_1m1m1 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
 
-            new_writhe_energy = lattice_writhe_Cimasoni(update2array, 
+            new_writhe_energy = lattice_writhe_Cimasoni(update2array, no_points,
                                                     projections_111=projections_111,
                                                     projections_1m11=projections_1m11,
                                                     projections_11m1=projections_11m1,
@@ -853,3 +912,5 @@ def pivot(array_dict, timesteps, knot):
                 continue
 
     return array_dict
+
+## Notice knot_evolution_hash currently has bias implemented

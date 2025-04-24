@@ -1,7 +1,7 @@
 import time
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
-from knot_evolution import *
+from defunct.knot_evolution import *
 
 def analyze_algorithms(array, knot, timesteps, sampler):
 

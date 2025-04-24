@@ -1,7 +1,9 @@
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 from knot_evolution_hash import *
+from quantum_knot_invs import *
 import time
+from defunct.knot_evolution import lattice_writhe_Klenin
 
 def main():
 
@@ -26,12 +28,17 @@ def main():
     print('Running pivot...')
     start_time = time.time()
     # pivot
-    evolved = pivot(oriented, timesteps=it*10, knot=knot_type)
+    evolved = pivot(oriented, timesteps=it*5, knot=knot_type)
     # bfacf (10x pivot)
     print('Running bfacf...')
-    evolved, wr, rog = BFACF(evolved, timesteps=it)
+    evolved, wr, rog = BFACF(evolved, timesteps=it*10)
+    print(f'Entanglement: {rog}')
+    print(f'Writhe: {wr}')
     end_time = time.time() - start_time
     print("Simulation time:", end_time)
+
+    topo = Q_invariant(evolved, 'Uq(sl2)').alexander_polynomial_hash(knot_type) 
+    print(f"Knot type consistent?: {topo}")
 
     # Convert back to array for plotting
     max_x = max(p[0] for p in evolved) + 1
@@ -45,8 +52,10 @@ def main():
     coords = np.argwhere(array>0)
     coord_dat = [(array[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
 
+    plt.imshow(lattice_writhe_Klenin(array))
+
     np.savetxt(f'examples/config_{knot_type}.csv', coord_dat, delimiter=",", fmt='%d')
-    plot_3d(array)
+    plot_3d_line(array)
 
 
 par = ArgumentParser()

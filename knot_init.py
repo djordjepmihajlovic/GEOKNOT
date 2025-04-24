@@ -3,6 +3,7 @@ from numba import prange
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm 
 import matplotlib.colors as mcolors  
+from mpl_toolkits.mplot3d import Axes3D
 
 class Knot:
     def __init__(self, knot, array):
@@ -41,6 +42,36 @@ def plot_3d(array):
     ax.set_xlim([0, 100])
     ax.set_ylim([0, 100])
     ax.set_zlim([0, 100])
+
+    plt.show()
+    plt.clf()
+
+
+def plot_3d_line(array):
+
+    indices = np.argwhere(array > 0)
+    values = array[tuple(indices.T)]
+    sorted_indices = indices[np.argsort(values)]
+
+    norm = mcolors.Normalize(vmin=np.min(values), vmax=np.max(values))
+    cmap = cm.coolwarm
+    colors = cmap(norm(np.sort(values)))
+
+    x, y, z = sorted_indices[:, 0], sorted_indices[:, 1], sorted_indices[:, 2]
+
+    # Plotting
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Plot line
+    ax.plot3D(x, y, z, color='gray', linewidth=1.5)
+
+    # Scatter with colors based on values
+    ax.scatter(x, y, z, c=np.sort(values), cmap=cmap, s=10)
+
+    ax.set_xlim([0, array.shape[0]])
+    ax.set_ylim([0, array.shape[1]])
+    ax.set_zlim([0, array.shape[2]])
 
     plt.show()
     plt.clf()

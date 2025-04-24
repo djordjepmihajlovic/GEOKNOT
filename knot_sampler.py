@@ -122,12 +122,15 @@ def main():
     args_list = [(i, oriented, knot_type, writhe_bins, rog_bins, sub_samples) for i in range(samples)]
 
     with Pool(processes=num_processes) as pool: 
-        dos, results = pool.map(process_wang_landau, args_list)  # Parallelize over `samples`
+        results = pool.map(process_wang_landau, args_list)  # Parallelize over `samples`
 
     run_time = time.time() - start_time
     print(run_time)
 
-    for i, evolved in enumerate(results):
+    dos = [r[0] for r in results]          # list of all g arrays
+    sampled_results = [r[1] for r in results] 
+
+    for i, evolved in enumerate(sampled_results):
         # Save coordinates
         for j, state in enumerate(evolved):
             max_x = max(p[0] for p in state) + 1

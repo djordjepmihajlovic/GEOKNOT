@@ -660,9 +660,9 @@ def lattice_writhe_Cimasoni(array, projections_111, projections_1m11, projection
                                 sign = sign_distance * sign_vector_orientation
                                 # rh, lh convention
                                 if sign > 0:
-                                    wr -= 1 * (abs(val1-val2)%(len(np.argwhere(array>1))/2))/(np.linalg.norm(distance))
+                                    wr -= 1 # * (abs(val1-val2)%(len(np.argwhere(array>1))/2))/(np.linalg.norm(distance))
                                 elif sign < 0: 
-                                    wr += 1 * (abs(val1-val2)%(len(np.argwhere(array>1))/2))/(np.linalg.norm(distance))
+                                    wr += 1 # * (abs(val1-val2)%(len(np.argwhere(array>1))/2))/(np.linalg.norm(distance))
 
         TA += wr
     TA = TA/4

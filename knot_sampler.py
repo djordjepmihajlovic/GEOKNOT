@@ -29,46 +29,46 @@ def main():
     We keep BFACF to take decorrelated samples and move them towards high writhe configurations.
     '''
 
-    global knot_type  # Declare global variables for use in `process_sample`
+    # global knot_type  # Declare global variables for use in `process_sample`
 
-    state_space = np.zeros((discretization, discretization, discretization))
-    knot = Knot(knot_type, state_space)
-    unknot = knot.initialize()
+    # state_space = np.zeros((discretization, discretization, discretization))
+    # knot = Knot(knot_type, state_space)
+    # unknot = knot.initialize()
 
-    print('Hashing...')
-    array_dict = {}
-    iter = np.nditer(unknot, flags=['multi_index'])
-    for val in iter:
-        if val != 0:
-            array_dict[iter.multi_index] = val.item()
+    # print('Hashing...')
+    # array_dict = {}
+    # iter = np.nditer(unknot, flags=['multi_index'])
+    # for val in iter:
+    #     if val != 0:
+    #         array_dict[iter.multi_index] = val.item()
 
-    print('Orienting...')
-    oriented = orient(array_dict)
-    for key, value in oriented.items():
-        if value == 1.0:
-            oriented[key] = 1  # orientation float issue
+    # print('Orienting...')
+    # oriented = orient(array_dict)
+    # for key, value in oriented.items():
+    #     if value == 1.0:
+    #         oriented[key] = 1  # orientation float issue
 
-    start_time = time.time()
-    args_list = [(i, oriented, knot_type) for i in range(samples)]
+    # start_time = time.time()
+    # args_list = [(i, oriented, knot_type) for i in range(samples)]
 
-    with Pool(processes=num_processes) as pool:  # Use all available CPU cores
-        results = pool.map(process_sample, args_list)  # Parallelize over `samples`
+    # with Pool(processes=num_processes) as pool:  # Use all available CPU cores
+    #     results = pool.map(process_sample, args_list)  # Parallelize over `samples`
 
-    run_time = time.time() - start_time
-    print(run_time)
+    # run_time = time.time() - start_time
+    # print(run_time)
 
-    for i, evolved in enumerate(results):
-        # Save coordinates
-        max_x = max(p[0] for p in evolved) + 1
-        max_y = max(p[1] for p in evolved) + 1
-        max_z = max(p[2] for p in evolved) + 1
-        array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
-        for (x, y, z), val in evolved.items():
-            array[x, y, z] = val
+    # for i, evolved in enumerate(results):
+    #     # Save coordinates
+    #     max_x = max(p[0] for p in evolved) + 1
+    #     max_y = max(p[1] for p in evolved) + 1
+    #     max_z = max(p[2] for p in evolved) + 1
+    #     array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
+    #     for (x, y, z), val in evolved.items():
+    #         array[x, y, z] = val
 
-        coords = np.argwhere(array>0)
-        coord_dat = [(array[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
-        np.savetxt(f'samples/{knot_type}_{i}.csv', coord_dat, delimiter=",", fmt='%d')
+    #     coords = np.argwhere(array>0)
+    #     coord_dat = [(array[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
+    #     np.savetxt(f'samples/{knot_type}_{i}.csv', coord_dat, delimiter=",", fmt='%d')
 
     writhe_dist = []
     r_o_g_dist = []

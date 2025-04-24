@@ -119,16 +119,20 @@ def main():
             G = build_correlation_graph(array_dict)
             indep_sets = find_independent_sets(G)
             largest_set = max(indep_sets, key=len)
+            if len(largest_set) > 5:
+                selected_points = random.sample(largest_set, 5)
+            else:
+                selected_points = largest_set
 
             # Send jobs to worker pool
-            tasks = [(array_dict, largest_set, old_energy)]
+            tasks = [(array_dict, selected_points, old_energy)]
             results = pool.map(process_independent_set, tasks)
 
             for new_dict, new_energy in results:
                 array_dict = new_dict  
                 old_energy = new_energy
 
-            steps += len(largest_set)
+            steps += len(selected_points)
 
     finally:
         pool.close()

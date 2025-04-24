@@ -186,11 +186,11 @@ def main():
 
             if entang > max_entang:
                 max_entang = entang
-                print (f"max wr: {min_entang}, {i}")
+                print (f"max entang: {min_entang}, {i}")
 
             if entang < min_entang:
                 min_entang = entang
-                print (f"max wr: {min_entang}, {i}")
+                print (f"min entang: {min_entang}, {i}")
 
 
             writhe_dist.append(writhe)

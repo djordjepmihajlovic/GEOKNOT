@@ -59,7 +59,7 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, rog_bins, sub_samples
 
         if g[proposed_bin] <= g[current_bin] or np.random.rand() < math.exp(g[current_bin] - g[proposed_bin]):
 
-            topo = Q_invariant(proposed_writhe, 'Uq(sl2)').alexander_polynomial_hash(knot_type) 
+            topo = Q_invariant(proposed_state, 'Uq(sl2)').alexander_polynomial_hash(knot_type) 
             if topo == True:
                 current_writhe = proposed_writhe
                 current_rog = proposed_rog

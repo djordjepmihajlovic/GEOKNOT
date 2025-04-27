@@ -30,14 +30,16 @@ To Implement:
     * Proteins (spec. bonded knotoids (capture forces) ~ protein_init.py ~ load in protein from PDB and automate)
     * S^{2} in Z^{4}, (S^{n} in Z^{n+2})
 
-Currently (25/03/25):
-    * Implemented Wang-Landau sampler to flatten distribution
-    * Need to test uncorrelated samples; how many iterations between sample save
-    * Need to test writhe calc; make sure it is correct
-    *** Neighbourhood can contain 3 points, requirement is that 2 of the neighbours at the previous and next point in the knot ***
+Currently (24/04/25):
+    * Writhe calc and specific projections (apparently (np.pi, np.e, sqrt(2))) might be a bad idea...
+    * Maybe experiment with slightly more frequent topology checks? (dependent on how quickly 3_1 samples...)
 
-    *** Urgently need to fix topology changing in BFACF ***
-    *** Need to fix speed (can be massively parallelized), maybe we want to use C code. ***
+To do (24/04/25):
+    * Implement first 5 knots
+    * Get (1000) samples for first 5 knots
+    * Plot distributions against each other (check mix)
+    *
+
 
 '''
 
@@ -833,6 +835,7 @@ def pivot(array_dict, timesteps, knot):
                                             projections_11m1=projections_11m1,
                                             projections_1m1m1=projections_1m1m1)
 
+    # inter_dict = dict(array_dict)
     for time in range(timesteps):
         print(time)
 
@@ -882,9 +885,20 @@ def pivot(array_dict, timesteps, knot):
         if status < -2:
             continue
         else:
-            # check topo after
-            # topo = Q_invariant(update_dict, 'Uq(sl2)').alexander_polynomial_hash(knot) 
-            # if topo == True:
+            # divide timesteps into 10 
+            # if time%timesteps/10: 
+                # topo = Q_invariant(update_dict, 'Uq(sl2)').alexander_polynomial_hash(knot) 
+                # if topo == True:
+                    # inter_dict = update_dict
+                    # array_dict = update_dict
+                    #continue
+                # else: 
+                    # time = prev_10_it ### Need to double check how to revert time 
+                    # I imagine this will be from a while loop where time +=1 every timestep
+                    # array_dict = inter_dict
+                # inter_dict = 
+                # check topo after
+            # else:
             max_x = max(p[0] for p in update_dict) + 1
             max_y = max(p[1] for p in update_dict) + 1
             max_z = max(p[2] for p in update_dict) + 1

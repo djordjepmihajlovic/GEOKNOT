@@ -6,6 +6,9 @@ import time
 from defunct.knot_evolution import lattice_writhe_Klenin
 
 def main():
+    '''
+    A function for running a simulation of pivot and BFACF moves on a given knot.
+    '''
 
 
     state_space = np.zeros((discretization, discretization, discretization))
@@ -31,7 +34,7 @@ def main():
     evolved = pivot(oriented, timesteps=it*5, knot=knot_type)
     # bfacf (10x pivot)
     print('Running bfacf...')
-    evolved, wr, rog = BFACF(evolved, timesteps=it*10)
+    evolved, wr, rog = BFACF(evolved, timesteps=it*100)
     print(f'Entanglement: {rog}')
     print(f'Writhe: {wr}')
     end_time = time.time() - start_time

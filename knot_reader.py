@@ -5,7 +5,7 @@ import matplotlib.colors as mcolors
 from knot_init import *
 from defunct.knot_evolution import lattice_writhe_Klenin
 
-# knot = np.loadtxt('/Users/s1910360/Desktop/max_entang.csv', delimiter=',', dtype=int)
+# knot = np.loadtxt('/Users/s1910360/Desktop/max_entang_3_1.csv', delimiter=',', dtype=int)
 
 def read(knot):
     state = np.zeros((100, 100, 100), dtype=np.int64)
@@ -15,6 +15,6 @@ def read(knot):
 
 # im = lattice_writhe_Klenin(read(knot))
 # print(np.sum(im))
-# plot_3d_line(read(knot))
 # plt.imshow(im)
+# plot_3d_line(read(knot))
 # plt.show()

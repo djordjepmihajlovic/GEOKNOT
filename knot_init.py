@@ -167,16 +167,16 @@ def k0_1_initialization(array):
     '''
 
     length = len(array[0])
-    for i in prange(50, length - 24):
-        for j in prange(50, length - 24):
-            if i == 50 or i == length-25:
+    for i in prange(36, length - 24):
+        for j in prange(36, length - 24):
+            if i == 36 or i == length-25:
                 array[50][i][j] = 1
 
-            if j == 50 or j == length-25:
+            if j == 36 or j == length-25:
 
                 array[50][i][j] = 1
 
-    array[50][50][50] = array[50][50][75] = array[50][75][75] = array[50][75][50] = 0
+    array[50][36][36] = array[50][36][75] = array[50][75][75] = array[50][75][36] = 0
 
     print(len(np.argwhere(array == 1)))
 

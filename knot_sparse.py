@@ -10,7 +10,6 @@ def main():
     A function for running a simulation of pivot and BFACF moves on a given knot.
     '''
 
-
     state_space = np.zeros((discretization, discretization, discretization))
     knot = Knot(knot_type, state_space)
     unknot = knot.initialize()
@@ -32,9 +31,9 @@ def main():
     start_time = time.time()
     # pivot
     evolved = pivot(oriented, timesteps=it*5, knot=knot_type)
-    # bfacf (10x pivot)
+    # bfacf (2x pivot)
     print('Running bfacf...')
-    evolved, wr, rog = BFACF(evolved, timesteps=it*100)
+    evolved, wr, rog = BFACF(evolved, timesteps=it*10)
     print(f'Entanglement: {rog}')
     print(f'Writhe: {wr}')
     end_time = time.time() - start_time

@@ -780,35 +780,33 @@ def BFACF(array_dict, timesteps):
             continue
         else:
 
-            array_dict = update_array
+            max_x = max(p[0] for p in update_array) + 1
+            max_y = max(p[1] for p in update_array) + 1
+            max_z = max(p[2] for p in update_array) + 1
+            update2array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
+            for (x, y, z), val in update_array.items():
+                update2array[x, y, z] = val
 
-            # max_x = max(p[0] for p in update_array) + 1
-            # max_y = max(p[1] for p in update_array) + 1
-            # max_z = max(p[2] for p in update_array) + 1
-            # update2array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
-            # for (x, y, z), val in update_array.items():
-            #     update2array[x, y, z] = val
+            projections_111 = points_on_axis(update2array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
+            projections_1m11 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
+            projections_11m1 = points_on_axis(update2array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
+            projections_1m1m1 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
 
-            # projections_111 = points_on_axis(update2array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
-            # projections_1m11 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
-            # projections_11m1 = points_on_axis(update2array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
-            # projections_1m1m1 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
-
-            # new_writhe_energy = lattice_writhe_Cimasoni(update2array, no_points, 
-            #                                         projections_111=projections_111,
-            #                                         projections_1m11=projections_1m11,
-            #                                         projections_11m1=projections_11m1,
-            #                                         projections_1m1m1=projections_1m1m1)
+            new_writhe_energy = lattice_writhe_Cimasoni(update2array, no_points, 
+                                                    projections_111=projections_111,
+                                                    projections_1m11=projections_1m11,
+                                                    projections_11m1=projections_11m1,
+                                                    projections_1m1m1=projections_1m1m1)
             
-            # new_entanglement_energy = long_range_entanglement(update_array)
-            # new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
+            new_entanglement_energy = long_range_entanglement(update_array)
+            new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
             
 
-            # if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=0.01):
-            #     array_dict = update_array
-            #     old_entanglement_energy = new_entanglement_energy
-            #     old_writhe_energy = new_writhe_energy
-            #     old_energy = new_energy
+            if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=0.01):
+                array_dict = update_array
+                old_entanglement_energy = new_entanglement_energy
+                old_writhe_energy = new_writhe_energy
+                old_energy = new_energy
 
     return array_dict, old_writhe_energy, old_entanglement_energy
         
@@ -888,48 +886,46 @@ def pivot(array_dict, timesteps, knot):
         if status < -2:
             continue
         else:
-            array_dict = update_dict
-
             
-            # # divide timesteps into 10 
-            # # if time%timesteps/10: 
-            #     # topo = Q_invariant(update_dict, 'Uq(sl2)').alexander_polynomial_hash(knot) 
-            #     # if topo == True:
-            #         # inter_dict = update_dict
-            #         # array_dict = update_dict
-            #         #continue
-            #     # else: 
-            #         # time = prev_10_it ### Need to double check how to revert time 
-            #         # I imagine this will be from a while loop where time +=1 every timestep
-            #         # array_dict = inter_dict
-            #     # inter_dict = 
-            #     # check topo after
-            # # else:
-            # max_x = max(p[0] for p in update_dict) + 1
-            # max_y = max(p[1] for p in update_dict) + 1
-            # max_z = max(p[2] for p in update_dict) + 1
-            # update2array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
-            # for (x, y, z), val in update_dict.items():
-            #     update2array[x, y, z] = val
+            # divide timesteps into 10 
+            # if time%timesteps/10: 
+                # topo = Q_invariant(update_dict, 'Uq(sl2)').alexander_polynomial_hash(knot) 
+                # if topo == True:
+                    # inter_dict = update_dict
+                    # array_dict = update_dict
+                    #continue
+                # else: 
+                    # time = prev_10_it ### Need to double check how to revert time 
+                    # I imagine this will be from a while loop where time +=1 every timestep
+                    # array_dict = inter_dict
+                # inter_dict = 
+                # check topo after
+            # else:
+            max_x = max(p[0] for p in update_dict) + 1
+            max_y = max(p[1] for p in update_dict) + 1
+            max_z = max(p[2] for p in update_dict) + 1
+            update2array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
+            for (x, y, z), val in update_dict.items():
+                update2array[x, y, z] = val
 
-            # projections_111 = points_on_axis(update2array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
-            # projections_1m11 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
-            # projections_11m1 = points_on_axis(update2array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
-            # projections_1m1m1 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
+            projections_111 = points_on_axis(update2array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
+            projections_1m11 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
+            projections_11m1 = points_on_axis(update2array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
+            projections_1m1m1 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
 
-            # new_writhe_energy = lattice_writhe_Cimasoni(update2array, no_points,
-            #                                         projections_111=projections_111,
-            #                                         projections_1m11=projections_1m11,
-            #                                         projections_11m1=projections_11m1,
-            #                                         projections_1m1m1=projections_1m1m1)
+            new_writhe_energy = lattice_writhe_Cimasoni(update2array, no_points,
+                                                    projections_111=projections_111,
+                                                    projections_1m11=projections_1m11,
+                                                    projections_11m1=projections_11m1,
+                                                    projections_1m1m1=projections_1m1m1)
         
 
-            # if metropolis_acceptance(old_energy=old_writhe_energy, new_energy=new_writhe_energy, temperature=0.01):
-            #     array_dict = update_dict
-            #     old_writhe_energy = new_writhe_energy
+            if metropolis_acceptance(old_energy=old_writhe_energy, new_energy=new_writhe_energy, temperature=0.01):
+                array_dict = update_dict
+                old_writhe_energy = new_writhe_energy
             
-            # else:
-            #     continue
+            else:
+                continue
 
     return array_dict
 

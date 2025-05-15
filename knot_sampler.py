@@ -154,7 +154,7 @@ def main():
         for j in range(sub_samples):
 
             print(f'Checking: {i},{j}')
-            file = np.loadtxt(f'samples/{knot_type}_{i}_{j}.csv', delimiter=',', dtype=int)
+            file = np.loadtxt(f'samples/0_1_152/{knot_type}_{i}_{j}.csv', delimiter=',', dtype=int)
             load = read(file)
             array = load.copy()
             no_points = len(np.argwhere(array)>0)

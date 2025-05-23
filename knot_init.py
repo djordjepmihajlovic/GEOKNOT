@@ -47,7 +47,7 @@ def plot_3d(array):
     plt.clf()
 
 
-def plot_3d_line(array):
+def plot_3d_line_array(array):
 
     indices = np.argwhere(array > 0)
     values = array[tuple(indices.T)]
@@ -72,6 +72,39 @@ def plot_3d_line(array):
     ax.set_xlim([0, array.shape[0]])
     ax.set_ylim([0, array.shape[1]])
     ax.set_zlim([0, array.shape[2]])
+
+    plt.show()
+    plt.clf()
+
+def plot_3d_line(coord_list):
+    """
+    Plots a 3D line and scatter plot based on a list of tuples (val, x, y, z).
+    """
+    # Extract values and coordinates
+    values = [item[0] for item in coord_list]
+    x = [item[1] for item in coord_list]
+    y = [item[2] for item in coord_list]
+    z = [item[3] for item in coord_list]
+
+    # Normalize values for coloring
+    norm = mcolors.Normalize(vmin=min(values), vmax=max(values))
+    cmap = cm.coolwarm
+    colors = cmap(norm(values))
+
+    # Plotting
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Plot line
+    ax.plot3D(x, y, z, color='gray', linewidth=1.5)
+
+    # Scatter with colors based on values
+    ax.scatter(x, y, z, c=values, cmap=cmap, s=10)
+
+    # Set axis limits (optional, adjust as needed)
+    # ax.set_xlim([min(x), max(x)])
+    # ax.set_ylim([min(y), max(y)])
+    # ax.set_zlim([min(z), max(z)])
 
     plt.show()
     plt.clf()

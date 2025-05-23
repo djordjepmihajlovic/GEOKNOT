@@ -34,11 +34,8 @@ Currently (24/04/25):
     * Writhe calc and specific projections (apparently (np.pi, np.e, sqrt(2))) might be a bad idea...
     * Maybe experiment with slightly more frequent topology checks? (dependent on how quickly 3_1 samples...)
 
-To do (24/04/25):
-    * Implement first 5 knots
-    * Get (1000) samples for first 5 knots
-    * Plot distributions against each other (check mix)
-    *
+To do (15/05/25):
+    * Currently there is a bug causing intersections of knot to occur which shouldnt be allowed in the BFACF algorithm.
 
 
 '''
@@ -156,17 +153,39 @@ def find_new(array, edge):
     return random.choice(valid_neighbours)
 
 @njit()
-def check_double_edge(array):
+def check_singularities(array_dict, new_edge, val):
     '''
     Checks for singular points.
     '''
-    indicies = np.argwhere(array > 1)
-    
-    if len(indicies) != 0:
-        for i in indicies:
-            array[i[0]][i[1]][i[2]] = 0
+    # new edge
+    # get neighbours of new edge
+    # construct new edge 'forward' and 'backward' vectors
+    # first find position of forward and backward points
+    forward_pos = list(array_dict.keys())[list(array_dict.values()).index(val+1)]
+    backward_pos = list(array_dict.keys())[list(array_dict.values()).index(val-1)]
+    forward_vector = np.array(forward_pos) - np.array(new_edge[:3])
+    backward_vector = np.array(new_edge[:3]) - np.array(backward_pos)
 
-    return array
+    neighbours = neighbours(array_dict, new_edge)
+    for i in neighbours:
+        # construct the vector between neighbour and subsequent point
+        if array_dict[tuple(i[:3])] == val or array_dict[tuple(i[:3])] == val+1 or array_dict[tuple(i[:3])] == val-1:
+            continue
+
+        else:
+            neighbour_pos = np.array(i[:3]) 
+            n_val = array_dict[tuple(i[:3])]
+            n_forward_pos = list(array_dict.keys())[list(array_dict.values()).index(n_val+1)]
+            n_backward_pos = list(array_dict.keys())[list(array_dict.values()).index(n_val-1)]
+            # check if the vectors intersect
+            n_forward_vector = np.array(n_forward_pos) - neighbour_pos
+            n_backward_vector = neighbour_pos - np.array(n_backward_pos)
+            
+
+        
+    singularity_status = True
+
+    return singularity_status
 
 def check_verticies(array_dict):
     """
@@ -185,7 +204,8 @@ def check_verticies(array_dict):
         for j in neighbourhood:
             neighbor_val = j[3]
             if neighbor_val == (value + 1) % total or neighbor_val == (value - 1) % total:
-                check.append(neighbor_val)
+            #if neighbor_val != 0:
+                check.append(neighbor_val) # only have neighbours with value +1 or -1 (a bit more restricting but removes possibility of X intersections)
 
         if len([v for v in check if v > 0]) != 2:
             status -= 1
@@ -259,10 +279,10 @@ def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshol
     '''
     Measures spatial proximity between distant points in sequence.
     
-    - sequence_threshold: minimum "sequence" distance between points to be considered long-range
-    - distance_threshold: maximum Euclidean distance in space to count as close contact
+    sequence_threshold: minimum "sequence" distance between points to be considered long-range
+    distance_threshold: maximum Euclidean distance in space to count as close contact
     Returns:
-    - A score counting long-range spatial entanglements
+    score counting long-range spatial entanglements
     '''
 
     coords = list(array_dict.keys())
@@ -775,8 +795,12 @@ def BFACF(array_dict, timesteps):
         del update_array[random_edge]
         update_array[new_edge[:3]] = update_array.get(new_edge[:3], 0) + old_val
 
+        # New function to check for singular points, takes in the updated array edge checks connecting strands (forward and backward) does a sweep to check for intersections
+        # Only needs to sweep neighbours of the new edge not the entire array
+
+
         status = check_verticies(update_array)
-        if status < -2:
+        if status < -2:#< -2:
             continue
         else:
 
@@ -883,7 +907,7 @@ def pivot(array_dict, timesteps, knot):
         if invalid == True:
             status = -np.inf
         
-        if status < -2:
+        if status < -2: # <-2
             continue
         else:
             

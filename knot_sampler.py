@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 from knot_evolution_hash import *
-from knot_reader import read
+from knot_reader import *
 from quantum_knot_invs import *
 import time
 from multiprocessing import Pool
@@ -10,14 +10,15 @@ import math
 import numpy as np
 
 '''
-Its always useful to write down ideas:))
-Ok, so I want to sample across the space of knots - wang landau just simulates without bias and picks
+Its always useful to write down ideas:)
+So I want to sample across the space of knots - wang landau just simulates without bias and picks
 to fulfill criteria, that is ok however i dont think it'll reach distant configs that often.
 Whereas explicitly biasing toward high entanglement will flatten highly entangled configurations.
 Could do this for a range?
+Also; if an 0_1 or 3_1 change; save them as respective knot.
 '''
 
-def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samples, f_init=math.e, flatness_crit=0.8):
+def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samples, f_init=math.e, flatness_crit=0.9):
     '''
     Need a way to randomly implement levels of energy checking to get samples that are highly writhed
     '''
@@ -30,19 +31,13 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samp
 
     writhe_range = (100, 1000)
     entang_range = (300, 900)
-    rog_range = (6, 15)
 
     writhe_edges = np.linspace(*writhe_range, writhe_bins + 1)
     entang_edges = np.linspace(*entang_range, entang_bins + 1)
 
-    min_writhe = writhe_range[0]
-    max_writhe = writhe_range[1]
-    min_entang_range = entang_range[0]
-    max_entang_range = entang_range[1]
-
-    def get_bin_indices(writhe, rog):
+    def get_bin_indices(writhe, entang):
         writhe_idx = np.digitize(writhe, writhe_edges) - 1
-        entang_idx = np.digitize(rog, entang_edges) - 1
+        entang_idx = np.digitize(entang, entang_edges) - 1
 
         # Clip indices to ensure they are within valid bounds
         writhe_idx = np.clip(writhe_idx, 0, writhe_bins - 1)
@@ -96,52 +91,65 @@ def main():
     We keep BFACF to take decorrelated samples and move them towards high writhe configurations.
     '''
 
-    # state_space = np.zeros((discretization, discretization, discretization))
-    # knot = Knot(knot_type, state_space)
-    # unknot = knot.initialize()
+    state_space = np.zeros((discretization, discretization, discretization))
+    knot = Knot(knot_type, state_space)
+    unknot = knot.initialize()
 
-    # print('Hashing...')
-    # array_dict = {}
-    # iter = np.nditer(unknot, flags=['multi_index'])
-    # for val in iter:
-    #     if val != 0:
-    #         array_dict[iter.multi_index] = val.item()
+    print('Hashing...')
+    array_dict = {}
+    iter = np.nditer(unknot, flags=['multi_index'])
+    for val in iter:
+        if val != 0:
+            array_dict[iter.multi_index] = val.item()
 
-    # print('Orienting...')
-    # oriented = orient(array_dict)
-    # for key, value in oriented.items():
-    #     if value == 1.0:
-    #         oriented[key] = 1  # orientation float issue
+    print('Orienting...')
+    oriented = orient(array_dict)
+    for key, value in oriented.items():
+        if value == 1.0:
+            oriented[key] = 1  # orientation float issue
 
-    # start_time = time.time()
+    start_time = time.time()
 
-    # writhe_bins = 10
-    # rog_bins = 10
+    writhe_bins = 100
+    rog_bins = 100
 
-    # args_list = [(i, oriented, knot_type, writhe_bins, rog_bins, sub_samples) for i in range(samples)]
+    args_list = [(i, oriented, knot_type, writhe_bins, rog_bins, sub_samples) for i in range(samples)]
 
-    # with Pool(processes=num_processes) as pool: 
-    #     results = pool.map(process_wang_landau, args_list)  # Parallelize over `samples`
+    with Pool(processes=num_processes) as pool: 
+        results = pool.map(process_wang_landau, args_list)  # Parallelize over `samples`
 
-    # run_time = time.time() - start_time
-    # print(run_time)
+    run_time = time.time() - start_time
+    print(run_time)
 
-    # dos = [r[0] for r in results]          # list of all g arrays
-    # sampled_results = [r[1] for r in results] 
+    dos = [r[0] for r in results]          # list of all g arrays
+    sampled_results = [r[1] for r in results] 
 
-    # for i, evolved in enumerate(sampled_results):
-    #     # Save coordinates
-    #     for j, state in enumerate(evolved):
-    #         max_x = max(p[0] for p in state) + 1
-    #         max_y = max(p[1] for p in state) + 1
-    #         max_z = max(p[2] for p in state) + 1
-    #         array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
-    #         for (x, y, z), val in state.items():
-    #             array[x, y, z] = val
+    for i, evolved in enumerate(sampled_results):
+        # Save coordinates
+        for j, state in enumerate(evolved):
+            max_x = max(p[0] for p in state) + 1
+            max_y = max(p[1] for p in state) + 1
+            max_z = max(p[2] for p in state) + 1
+            array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
+            for (x, y, z), val in state.items():
+                array[x, y, z] = val
 
-    #         coords = np.argwhere(array>0)
-    #         coord_dat = [(array[p[0], p[1], p[2]], p[0], p[1], p[2]) for p in coords]
-    #         np.savetxt(f'samples/{knot_type}_{i}_{j}.csv', coord_dat, delimiter=",", fmt='%d')
+            coords = np.argwhere(array>0)
+            coord_dat = [(array[p[0], p[1], p[2]], p[0], p[1], p[2]) for p in coords]
+
+            elements = sorted(coord_dat, key=lambda x: x[0])
+            print(elements)
+            
+            joggle_scale = 1e-2
+            np.random.seed(42)
+            elements_jiggled = [np.array([i[1:4] for i in elements], dtype=float) +
+            np.random.normal(scale=joggle_scale, size=(len(elements), 3))]
+
+            new_coord = [tuple(row) for row in elements_jiggled[0]]
+            w = [i[0] for i in elements]
+            new_coord_w = [(w[idx],) + coord for idx, coord in enumerate(new_coord)]
+
+            np.savetxt(f'samples/{knot_type}_{i}_{j}.csv', new_coord_w, delimiter=",", fmt='%.5f')
 
     writhe_dist = []
     entang_dist = []
@@ -150,13 +158,16 @@ def main():
     min_writhe = 500
     min_entang = 500
 
+    ## current issue is that the cimasoni writhe takes in an array, however after jiggling the coordinates
+    ## the coordinates cant be made into an array.
+
     for i in range(samples):
         for j in range(sub_samples):
 
             print(f'Checking: {i},{j}')
-            file = np.loadtxt(f'samples/0_1_152/{knot_type}_{i}_{j}.csv', delimiter=',', dtype=int)
-            load = read(file)
-            array = load.copy()
+            file = np.loadtxt(f'samples/{knot_type}_{i}_{j}.csv', delimiter=',', dtype=int)
+            load = read_array(file)
+            array = load.copy() # this will load an integer rounded version
             no_points = len(np.argwhere(array)>0)
             projections_111 = points_on_axis(array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
             projections_1m11 = points_on_axis(array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
@@ -196,11 +207,11 @@ def main():
             writhe_dist.append(writhe)
             entang_dist.append(entang)
 
-    plt.hist(writhe_dist)
+    plt.plot(range(len(writhe_dist)), writhe_dist, label='Writhe')
     plt.savefig(f'samples/writhe_dist_samples_{knot_type}.png')
     plt.clf()
-
-    plt.hist(entang_dist)
+    
+    plt.plot(range(len(entang_dist)), entang_dist, label='Entanglement')
     plt.savefig(f'samples/entang_dist_samples_{knot_type}.png')
     plt.clf()
 

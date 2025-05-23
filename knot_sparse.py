@@ -54,12 +54,27 @@ def main():
     coords = np.argwhere(array>0)
     coord_dat = [(array[i[0], i[1], i[2]], i[0], i[1], i[2]) for i in coords]
 
-    im = lattice_writhe_Klenin(array)
+    elements = sorted(coord_dat, key=lambda x: x[0])
+    
+    joggle_scale = 1e-2
+    np.random.seed(42)
+    elements_jiggled = [np.array([i[1:4] for i in elements], dtype=float) +
+    np.random.normal(scale=joggle_scale, size=(len(elements), 3))]
+
+    new_coord = [tuple(row) for row in elements_jiggled[0]]
+    w = [i[0] for i in elements]
+    new_coord_w = [(w[idx],) + coord for idx, coord in enumerate(new_coord)]
+
+    print(new_coord_w)
+    ### new_coord_w now contains jiggled coords. Want to change action of plot_3d_line to work with this.
+
+    im = lattice_writhe_Klenin(new_coord_w)
     print(np.sum(im))
     plt.imshow(im)
+    plt.colorbar()
 
-    np.savetxt(f'examples/config_{knot_type}.csv', coord_dat, delimiter=",", fmt='%d')
-    plot_3d_line(array)
+    np.savetxt(f'examples/config_{knot_type}.csv', new_coord_w, delimiter=",", fmt='%.5f')
+    plot_3d_line(new_coord_w)
 
 par = ArgumentParser()
 '''

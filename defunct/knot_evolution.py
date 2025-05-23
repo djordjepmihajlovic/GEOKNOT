@@ -676,18 +676,19 @@ def lattice_writhe_Cimasoni(array, projections_111, projections_1m11, projection
     TA = TA/4
     return TA
 
-def lattice_writhe_Klenin(array):
+def lattice_writhe_Klenin(coord_list):
+    '''
+    Computes writhe using Klenin formulation.
+    Input: list of points in 3D space and value.
+    '''
+    
+    ringx = np.array([(x, y, z) for _, x, y, z in coord_list])
+    vals = np.array([val for val, _, _, _ in coord_list])
 
-    ringx = np.argwhere(array>0)
-    ring1 = np.zeros_like(ringx)
-    vals = np.zeros(len(ringx))
-    for idx, i in enumerate(ringx):
-        pos = array[i[0]][i[1]][i[2]]
-        vals[idx] = pos
-        ring1[int(pos)%len(ringx)] = i
-
+    sorted_indices = np.argsort(vals)
+    ring1 = ringx[sorted_indices]
     ring2 = ring1.copy()
-    matrix = np.zeros((ring1.shape[0],ring2.shape[0]))
+    matrix = np.zeros((ring1.shape[0], ring2.shape[0]))
     # Loop on the first ring
     for i in prange(ring1.shape[0]):
         # Loop on the second ring

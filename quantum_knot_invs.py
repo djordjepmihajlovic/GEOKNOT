@@ -423,7 +423,8 @@ class Q_invariant:
         elements = sorted(elements, key=lambda x: x[0])
         elements.append(elements[0])
         
-        joggle_scale = 1e-4
+        joggle_scale = 1e-2
+        np.random.seed(42)
         elements = [np.array([i[1:4] for i in elements], dtype=float) +
         np.random.normal(scale=joggle_scale, size=(len(elements), 3))]
 

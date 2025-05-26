@@ -73,15 +73,15 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samp
             H.fill(0)
             f = math.sqrt(f)
         
-    return g, sampled_states
+    return sampled_states
 
 def process_wang_landau(args):
 
     i, oriented, knot_type, writhe_bins, rog_bins, sub_samples = args
 
-    g, sampled_states = wang_landau_sampling(oriented, knot_type, writhe_bins, rog_bins, sub_samples)
+    sampled_states = wang_landau_sampling(oriented, knot_type, writhe_bins, rog_bins, sub_samples)
 
-    return g, sampled_states
+    return sampled_states
 
 
 def main():
@@ -121,8 +121,7 @@ def main():
     run_time = time.time() - start_time
     print(run_time)
 
-    dos = [r[0] for r in results]          # list of all g arrays
-    sampled_results = [r[1] for r in results] 
+    sampled_results = [r for r in results]          # list of all sampled states
 
     for i, evolved in enumerate(sampled_results):
         # Save coordinates
@@ -207,11 +206,17 @@ def main():
             writhe_dist.append(writhe)
             entang_dist.append(entang)
 
-    plt.plot(range(len(writhe_dist)), writhe_dist, label='Writhe')
+    plt.hist(writhe_dist, bins=100, density=True, alpha=0.5, label='Writhe Distribution')
+    plt.xlabel('Writhe')
+    plt.ylabel('Density')
+    plt.title(f'Writhe Distribution for {knot_type}')
     plt.savefig(f'samples/writhe_dist_samples_{knot_type}.png')
     plt.clf()
     
-    plt.plot(range(len(entang_dist)), entang_dist, label='Entanglement')
+    plt.hist(entang_dist, bins=100, density=True, alpha=0.5, label='Entanglement Distribution')
+    plt.xlabel('Entanglement')
+    plt.ylabel('Density')
+    plt.title(f'Entanglement Distribution for {knot_type}')
     plt.savefig(f'samples/entang_dist_samples_{knot_type}.png')
     plt.clf()
 

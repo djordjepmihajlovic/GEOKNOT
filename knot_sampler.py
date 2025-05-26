@@ -21,16 +21,17 @@ Also; if an 0_1 or 3_1 change; save them as respective knot.
 def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samples, f_init=math.e, flatness_crit=0.9):
     '''
     Need a way to randomly implement levels of energy checking to get samples that are highly writhed
+    Set no. bins = no. sub_samples, then we want each bin to be filled w exactly one sample.
     '''
 
-    g = np.zeros((writhe_bins, entang_bins))
-    H = np.zeros((writhe_bins, entang_bins))
+    g = np.zeros((writhe_bins, entang_bins)) # 2d matrix of log probs
+    H = np.zeros((writhe_bins, entang_bins)) # 2d matrix of histogram counts
     f = f_init
     pivot_lag = 5000
     BFACF_lag = 10000
 
-    writhe_range = (100, 1000)
-    entang_range = (300, 900)
+    writhe_range = (0, 1000)
+    entang_range = (0, 1000)
 
     writhe_edges = np.linspace(*writhe_range, writhe_bins + 1)
     entang_edges = np.linspace(*entang_range, entang_bins + 1)
@@ -39,7 +40,6 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samp
         writhe_idx = np.digitize(writhe, writhe_edges) - 1
         entang_idx = np.digitize(entang, entang_edges) - 1
 
-        # Clip indices to ensure they are within valid bounds
         writhe_idx = np.clip(writhe_idx, 0, writhe_bins - 1)
         entang_idx = np.clip(entang_idx, 0, entang_bins - 1)
         return writhe_idx, entang_idx
@@ -49,29 +49,36 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samp
     current_entang = 0
     sampled_states = []
 
-    while len(sampled_states) < sub_samples:
+    all_bins = [(i, j) for i in range(writhe_bins) for j in range(entang_bins)]
+    filled_bins = set()
 
-        proposed_state = pivot(current_state, timesteps=pivot_lag, knot=knot_type)
-        proposed_state, proposed_writhe, proposed_entang = BFACF(proposed_state, timesteps=BFACF_lag)
+    # while len(sampled_states) < sub_samples:
+    for target_bin in all_bins:
+        while target_bin not in filled_bins:
 
-        current_bin = get_bin_indices(current_writhe, current_entang)
-        proposed_bin = get_bin_indices(proposed_writhe, proposed_entang)
+            proposed_state = pivot(current_state, timesteps=pivot_lag, knot=knot_type)
+            proposed_state, proposed_writhe, proposed_entang = BFACF(proposed_state, timesteps=BFACF_lag)
 
-        if g[proposed_bin] <= g[current_bin] or np.random.rand() < math.exp(g[current_bin] - g[proposed_bin]):
+            current_bin = get_bin_indices(current_writhe, current_entang)
+            proposed_bin = get_bin_indices(proposed_writhe, proposed_entang)
 
-            topo = Q_invariant(proposed_state, 'Uq(sl2)').alexander_polynomial_hash(knot_type) 
-            if topo == True:
-                current_writhe = proposed_writhe
-                current_entang = proposed_entang
-                current_bin = proposed_bin
-                sampled_states.append(proposed_state)
+            if g[proposed_bin] <= g[current_bin] or np.random.rand() < 0.1: #math.exp(g[current_bin] - g[proposed_bin]):
 
-        g[current_bin] += math.log(f)
-        H[current_bin] += 1
+                topo = Q_invariant(proposed_state, 'Uq(sl2)').alexander_polynomial_hash(knot_type) 
+                if topo == True:
+                    current_writhe = proposed_writhe
+                    current_entang = proposed_entang
+                    current_bin = proposed_bin
+                    sampled_states.append(proposed_state)
 
-        if np.min(H) > flatness_crit * np.mean(H):
-            H.fill(0)
-            f = math.sqrt(f)
+                    filled_bins.add(proposed_bin)
+
+            g[current_bin] += math.log(f)
+            H[current_bin] += 1
+
+            if np.min(H) > flatness_crit * np.mean(H):
+                H.fill(0)
+                f = math.sqrt(f)
         
     return sampled_states
 
@@ -110,8 +117,8 @@ def main():
 
     start_time = time.time()
 
-    writhe_bins = 100
-    rog_bins = 100
+    writhe_bins = sub_samples
+    rog_bins = sub_samples
 
     args_list = [(i, oriented, knot_type, writhe_bins, rog_bins, sub_samples) for i in range(samples)]
 
@@ -156,9 +163,6 @@ def main():
     max_entang = 0
     min_writhe = 500
     min_entang = 500
-
-    ## current issue is that the cimasoni writhe takes in an array, however after jiggling the coordinates
-    ## the coordinates cant be made into an array.
 
     for i in range(samples):
         for j in range(sub_samples):

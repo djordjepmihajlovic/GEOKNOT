@@ -49,37 +49,35 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samp
     current_entang = 0
     sampled_states = []
 
-    all_bins = [(i, j) for i in range(writhe_bins) for j in range(entang_bins)]
-    filled_bins = set()
+    # all_bins = [(i, j) for i in range(writhe_bins) for j in range(entang_bins)]
+    # filled_bins = set()
 
-    # while len(sampled_states) < sub_samples:
-    for target_bin in all_bins:
-        while target_bin not in filled_bins:
+    while len(sampled_states) < sub_samples:
+    # for target_bin in all_bins:
+    #     while target_bin not in filled_bins:
 
-            proposed_state = pivot(current_state, timesteps=pivot_lag, knot=knot_type)
-            proposed_state, proposed_writhe, proposed_entang = BFACF(proposed_state, timesteps=BFACF_lag)
+        proposed_state = pivot(current_state, timesteps=pivot_lag, knot=knot_type)
+        proposed_state, proposed_writhe, proposed_entang = BFACF(proposed_state, timesteps=BFACF_lag)
 
-            current_bin = get_bin_indices(current_writhe, current_entang)
-            proposed_bin = get_bin_indices(proposed_writhe, proposed_entang)
+        current_bin = get_bin_indices(current_writhe, current_entang)
+        proposed_bin = get_bin_indices(proposed_writhe, proposed_entang)
 
-            if g[proposed_bin] <= g[current_bin] or np.random.rand() < 0.1: #math.exp(g[current_bin] - g[proposed_bin]):
+        if g[proposed_bin] <= g[current_bin] or np.random.rand() < 0.1: #math.exp(g[current_bin] - g[proposed_bin]):
 
-                topo = Q_invariant(proposed_state, 'Uq(sl2)').alexander_polynomial_hash(knot_type) 
-                if topo == True:
-                    current_writhe = proposed_writhe
-                    current_entang = proposed_entang
-                    current_bin = proposed_bin
-                    sampled_states.append(proposed_state)
+            topo = Q_invariant(proposed_state, 'Uq(sl2)').alexander_polynomial_hash(knot_type) 
+            if topo == True:
+                current_writhe = proposed_writhe
+                current_entang = proposed_entang
+                current_bin = proposed_bin
+                sampled_states.append(proposed_state)
 
-                    filled_bins.add(proposed_bin)
+        g[current_bin] += math.log(f)
+        H[current_bin] += 1
 
-            g[current_bin] += math.log(f)
-            H[current_bin] += 1
-
-            if np.min(H) > flatness_crit * np.mean(H):
-                H.fill(0)
-                f = math.sqrt(f)
-        
+        if np.min(H) > flatness_crit * np.mean(H):
+            H.fill(0)
+            f = math.sqrt(f)
+    
     return sampled_states
 
 def process_wang_landau(args):

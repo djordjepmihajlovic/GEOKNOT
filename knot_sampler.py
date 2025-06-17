@@ -18,7 +18,7 @@ Could do this for a range?
 Also; if an 0_1 or 3_1 change; save them as respective knot.
 '''
 
-def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samples, f_init=math.e, flatness_crit=0.9):
+def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samples, f_init=math.e, flatness_crit=0.99):
     '''
     Need a way to randomly implement levels of energy checking to get samples that are highly writhed
     Set no. bins = no. sub_samples, then we want each bin to be filled w exactly one sample.
@@ -62,7 +62,7 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samp
         current_bin = get_bin_indices(current_writhe, current_entang)
         proposed_bin = get_bin_indices(proposed_writhe, proposed_entang)
 
-        if g[proposed_bin] <= g[current_bin] or np.random.rand() < 0.001: #math.exp(g[current_bin] - g[proposed_bin]):
+        if g[proposed_bin] <= g[current_bin]: # or np.random.rand() < 0.001: #math.exp(g[current_bin] - g[proposed_bin]):
 
             topo = Q_invariant(proposed_state, 'Uq(sl2)').alexander_polynomial_hash(knot_type) 
             if topo == True:
@@ -75,7 +75,8 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samp
         H[current_bin] += 1
 
         if np.min(H) > flatness_crit * np.mean(H):
-            H.fill(0)
+            # H.fill(0)
+            H = H/np.sum(H)
             f = math.sqrt(f)
     
     return sampled_states

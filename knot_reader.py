@@ -5,7 +5,7 @@ import matplotlib.colors as mcolors
 from knot_init import *
 from defunct.knot_evolution import lattice_writhe_Klenin
 
-# knot = np.loadtxt('/Users/s1910360/Desktop/max_wr_3_1.csv', delimiter=',', dtype=np.float64)
+# knot = np.loadtxt('/Users/s1910360/Desktop/max_entang_3_1.csv', delimiter=',', dtype=np.float64)
 # knot = np.loadtxt('examples/lmp0_1.n152.2.dat', delimiter=',', dtype=np.float64)
 
 def read_array(knot):

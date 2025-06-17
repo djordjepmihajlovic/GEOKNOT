@@ -62,7 +62,7 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samp
         current_bin = get_bin_indices(current_writhe, current_entang)
         proposed_bin = get_bin_indices(proposed_writhe, proposed_entang)
 
-        if g[proposed_bin] <= g[current_bin] or np.random.rand() < 0.1: #math.exp(g[current_bin] - g[proposed_bin]):
+        if g[proposed_bin] <= g[current_bin] or np.random.rand() < 0.001: #math.exp(g[current_bin] - g[proposed_bin]):
 
             topo = Q_invariant(proposed_state, 'Uq(sl2)').alexander_polynomial_hash(knot_type) 
             if topo == True:

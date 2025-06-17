@@ -6,7 +6,7 @@ from knot_init import *
 from defunct.knot_evolution import lattice_writhe_Klenin
 
 # knot = np.loadtxt('/Users/s1910360/Desktop/max_wr_3_1.csv', delimiter=',', dtype=np.float64)
-#knot = np.loadtxt('examples/config_0_1.csv', delimiter=',', dtype=np.float64)
+# knot = np.loadtxt('examples/lmp0_1.n152.2.dat', delimiter=',', dtype=np.float64)
 
 def read_array(knot):
     state = np.zeros((100, 100, 100), dtype=np.int64)
@@ -15,8 +15,18 @@ def read_array(knot):
     return state
 
 def read_coord(knot):
-    coord_list = [(i[0], i[1], i[2], i[3]) for i in knot]
+    coord_list = [(float(i[0]), float( i[1]), float(i[2]), float(i[3])) for i in knot]
     coord_list = sorted(coord_list, key=lambda x: x[0])
+
+    # for i in range(len(coord_list)):
+    #     # fix pdbs
+    #     if float(coord_list[i][1]) > 0:
+    #         coord_list[i] = (coord_list[i][0], float(coord_list[i][1]) - 100, coord_list[i][2], coord_list[i][3])
+    #     if float(coord_list[i][2]) > 0:
+    #         coord_list[i] = (coord_list[i][0], coord_list[i][1], float(coord_list[i][2]) - 100, coord_list[i][3])
+    #     if float(coord_list[i][3]) > 0:
+    #         coord_list[i] = (coord_list[i][0], coord_list[i][1], coord_list[i][2], float(coord_list[i][3]) - 100)
+
     return coord_list
 
 # im = lattice_writhe_Klenin(read_coord(knot))

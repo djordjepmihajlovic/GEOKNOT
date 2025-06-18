@@ -562,7 +562,7 @@ def metropolis_acceptance(old_energy, new_energy, temperature):
     else:
         # Fix this! Accepting way too many falses
         # return False
-        return np.random.rand() < 0.1
+        return False
 
 def points_on_axis(array, axis):
     '''
@@ -748,11 +748,15 @@ def lattice_writhe_Cimasoni(array, no_points, projections_111, projections_1m11,
     TA = TA/4
     return TA
 
-def BFACF(array_dict, timesteps):
+def BFACF(array_dict, timesteps, aimed_range):
     '''
     BFACF with chosen sampling methods
     '''
     alpha = 0.5
+    max_wr = max(aimed_range)
+    min_wr = min(aimed_range)
+    random_number = random.uniform(0, 1)
+    target = (max_wr + min_wr) / 2 + random_number * (max_wr - min_wr) / 2
 
     init_array = dict(array_dict)
     no_points = len(init_array)
@@ -780,7 +784,9 @@ def BFACF(array_dict, timesteps):
 
     for time in range(timesteps):
         
-        print(f"simulation: {time/timesteps}")
+        # print(f"simulation: {time/timesteps}")
+        if time % (timesteps/10) == 0:
+            print(f"BFACF: {time/timesteps}")
 
         update_array = dict(array_dict)
         valid_indicies = [pos for pos, val in array_dict.items() if val > 1]
@@ -825,20 +831,29 @@ def BFACF(array_dict, timesteps):
             new_entanglement_energy = long_range_entanglement(update_array)
             new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
             
-
-            if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=0.01):
-                array_dict = update_array
-                old_entanglement_energy = new_entanglement_energy
-                old_writhe_energy = new_writhe_energy
-                old_energy = new_energy
+            if new_writhe_energy < target:
+                if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=0.01):
+                    array_dict = update_array
+                    old_entanglement_energy = new_entanglement_energy
+                    old_writhe_energy = new_writhe_energy
+                    old_energy = new_energy
+            else:
+                continue
 
     return array_dict, old_writhe_energy, old_entanglement_energy
         
-def pivot(array_dict, timesteps, knot):
+def pivot(array_dict, timesteps, knot, aimed_range):
     '''
     Pivot algorithm to increase autocorrelation of samples.
     Notice: valid pivots occur on a shared axis in Z^{3}
     '''
+
+    # Randomly pick number that determines minimizing/ maximizing/ doing nothing for writhe
+    max_wr = max(aimed_range)
+    min_wr = min(aimed_range)
+    random_number = random.uniform(0, 1)
+
+    target = (max_wr + min_wr) / 2 + random_number * (max_wr - min_wr) / 2
 
     init_array = dict(array_dict)
     no_points = len(init_array)
@@ -862,7 +877,9 @@ def pivot(array_dict, timesteps, knot):
 
     # inter_dict = dict(array_dict)
     for time in range(timesteps):
-        print(time)
+        # print(time)
+        if time % (timesteps/10) == 0:
+            print(f"Pivot: {time/timesteps}")
 
         update_dict = dict(array_dict)
         valid_indicies = [pos for pos, val in update_dict.items() if val > 0]
@@ -911,20 +928,12 @@ def pivot(array_dict, timesteps, knot):
             continue
         else:
             
+            ### Function for Muhammad to implement ###
             # divide timesteps into 10 
-            # if time%timesteps/10: 
-                # topo = Q_invariant(update_dict, 'Uq(sl2)').alexander_polynomial_hash(knot) 
-                # if topo == True:
-                    # inter_dict = update_dict
-                    # array_dict = update_dict
-                    #continue
-                # else: 
-                    # time = prev_10_it ### Need to double check how to revert time 
-                    # I imagine this will be from a while loop where time +=1 every timestep
-                    # array_dict = inter_dict
-                # inter_dict = 
-                # check topo after
-            # else:
+            # check topology using Q_invariant
+            # if topology not consistent within chunk reverse to previous chunk 
+            # continue
+
             max_x = max(p[0] for p in update_dict) + 1
             max_y = max(p[1] for p in update_dict) + 1
             max_z = max(p[2] for p in update_dict) + 1
@@ -942,15 +951,14 @@ def pivot(array_dict, timesteps, knot):
                                                     projections_1m11=projections_1m11,
                                                     projections_11m1=projections_11m1,
                                                     projections_1m1m1=projections_1m1m1)
-        
 
-            if metropolis_acceptance(old_energy=old_writhe_energy, new_energy=new_writhe_energy, temperature=0.01):
-                array_dict = update_dict
-                old_writhe_energy = new_writhe_energy
+            if new_writhe_energy < target:
+                if metropolis_acceptance(old_energy=old_writhe_energy, new_energy=new_writhe_energy, temperature=0.01):
+                    array_dict = update_dict
+                    old_writhe_energy = new_writhe_energy
             
             else:
                 continue
 
     return array_dict
 
-## Notice knot_evolution_hash currently has bias implemented

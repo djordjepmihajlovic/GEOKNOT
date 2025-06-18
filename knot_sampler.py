@@ -23,6 +23,7 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samp
     Need a way to randomly implement levels of energy checking to get samples that are highly writhed
     Set no. bins = no. sub_samples, then we want each bin to be filled w exactly one sample.
     '''
+    ### Idea, pass the aimed writhe (range per bin) and entanglement (range per bin) as arguments into BFACF and pivot evolvers.
 
     g = np.zeros((writhe_bins, entang_bins)) # 2d matrix of log probs
     H = np.zeros((writhe_bins, entang_bins)) # 2d matrix of histogram counts
@@ -30,8 +31,8 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samp
     pivot_lag = 5000
     BFACF_lag = 10000
 
-    writhe_range = (0, 300)
-    entang_range = (0, 500)
+    writhe_range = (0, 1000)
+    entang_range = (0, 1000)
 
     writhe_edges = np.linspace(*writhe_range, writhe_bins + 1)
     entang_edges = np.linspace(*entang_range, entang_bins + 1)
@@ -44,6 +45,11 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samp
         entang_idx = np.clip(entang_idx, 0, entang_bins - 1)
         return writhe_idx, entang_idx
     
+    writhe_ranges = [(writhe_edges[i], writhe_edges[i + 1]) for i in range(len(writhe_edges) - 1)]
+    entang_ranges = [(entang_edges[i], entang_edges[i + 1]) for i in range(len(entang_edges) - 1)]
+
+    print(f'Writhe ranges: {writhe_ranges}')
+    
     current_state = oriented
     current_writhe = 0
     current_entang = 0
@@ -55,33 +61,44 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samp
     # while len(sampled_states) < sub_samples:
     # for target_bin in all_bins:
     #     while target_bin not in filled_bins:
-    while len(filled_bins) < writhe_bins * entang_bins:
+    # while len(filled_bins) < writhe_bins:
+    for i in range(len(writhe_ranges)):
+        completed = False
+        while completed == False:
 
-        proposed_state = pivot(current_state, timesteps=pivot_lag, knot=knot_type)
-        proposed_state, proposed_writhe, proposed_entang = BFACF(proposed_state, timesteps=BFACF_lag)
+            proposed_state = pivot(current_state, timesteps=pivot_lag, knot=knot_type, aimed_range=writhe_ranges[i])
+            proposed_state, proposed_writhe, proposed_entang = BFACF(proposed_state, timesteps=BFACF_lag, aimed_range=writhe_ranges[i])
 
-        current_bin = get_bin_indices(current_writhe, current_entang)
-        proposed_bin = get_bin_indices(proposed_writhe, proposed_entang)
+            current_bin = get_bin_indices(current_writhe, current_entang)
+            proposed_bin = get_bin_indices(proposed_writhe, proposed_entang)
 
-        if proposed_bin[0] not in filled_bins:
+            print(proposed_bin)
+            print(filled_bins)
 
-        # if g[proposed_bin] <= g[current_bin]: # or np.random.rand() < 0.001: #math.exp(g[current_bin] - g[proposed_bin]):
+            # if proposed_bin[0] not in filled_bins:
+
+            # if g[proposed_bin] <= g[current_bin]: # or np.random.rand() < 0.001: #math.exp(g[current_bin] - g[proposed_bin]):
 
             topo = Q_invariant(proposed_state, 'Uq(sl2)').alexander_polynomial_hash(knot_type) 
+            print(f"writhe: {proposed_writhe}, range: {writhe_ranges[i]}")
             if topo == True:
                 current_writhe = proposed_writhe
                 current_entang = proposed_entang
-                current_bin = proposed_bin
-                sampled_states.append(proposed_state)
-                filled_bins.add(proposed_bin[0])
+                # current_bin = proposed_bin
+                # sampled_states.append(proposed_state)
+                # filled_bins.add(proposed_bin[0])
+                if min(writhe_ranges[i])<current_writhe<max(writhe_ranges[i]):
+                    sampled_states.append(proposed_state)
+                    completed = True
+                    print(f"Sampled state with writhe {current_writhe} and entanglement {current_entang} in bin {writhe_ranges[i]}")
 
-        # g[current_bin] += math.log(f)
-        # H[current_bin] += 1
+            # g[current_bin] += math.log(f)
+            # H[current_bin] += 1
 
-        # if np.min(H) > flatness_crit * np.mean(H):
-        #     # H.fill(0)
-        #     H = H/np.sum(H)
-        #     f = math.sqrt(f)
+            # if np.min(H) > flatness_crit * np.mean(H):
+            #     # H.fill(0)
+            #     H = H/np.sum(H)
+            #     f = math.sqrt(f)
     
     return sampled_states
 

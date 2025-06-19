@@ -24,6 +24,10 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samp
     Set no. bins = no. sub_samples, then we want each bin to be filled w exactly one sample.
     '''
     ### Idea, pass the aimed writhe (range per bin) and entanglement (range per bin) as arguments into BFACF and pivot evolvers.
+    ### This is much more efficient than randomly evolving and hoping for a sample to fall into the right bin.
+    ### Another cool idea could be to enforce change in knot type by selectively evolving components of the knot.
+    ### Say if we get a knot with correct writhe bin but wrong type -> perturb into correct type.
+    ### Would need to find a way of locating the right components to perturb.
 
     g = np.zeros((writhe_bins, entang_bins)) # 2d matrix of log probs
     H = np.zeros((writhe_bins, entang_bins)) # 2d matrix of histogram counts
@@ -55,16 +59,11 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samp
     current_entang = 0
     sampled_states = []
 
-    # all_bins = [(i, j) for i in range(writhe_bins) for j in range(entang_bins)]
     filled_bins = set()
 
-    # while len(sampled_states) < sub_samples:
-    # for target_bin in all_bins:
-    #     while target_bin not in filled_bins:
-    # while len(filled_bins) < writhe_bins:
     for i in range(len(writhe_ranges)):
         completed = False
-        while completed == False:
+        while not completed:
 
             proposed_state = pivot(current_state, timesteps=pivot_lag, knot=knot_type, aimed_range=writhe_ranges[i])
             proposed_state, proposed_writhe, proposed_entang = BFACF(proposed_state, timesteps=BFACF_lag, aimed_range=writhe_ranges[i])
@@ -75,30 +74,15 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samp
             print(proposed_bin)
             print(filled_bins)
 
-            # if proposed_bin[0] not in filled_bins:
-
-            # if g[proposed_bin] <= g[current_bin]: # or np.random.rand() < 0.001: #math.exp(g[current_bin] - g[proposed_bin]):
-
             topo = Q_invariant(proposed_state, 'Uq(sl2)').alexander_polynomial_hash(knot_type) 
             print(f"writhe: {proposed_writhe}, range: {writhe_ranges[i]}")
             if topo == True:
                 current_writhe = proposed_writhe
                 current_entang = proposed_entang
-                # current_bin = proposed_bin
-                # sampled_states.append(proposed_state)
-                # filled_bins.add(proposed_bin[0])
                 if min(writhe_ranges[i])<current_writhe<max(writhe_ranges[i]):
                     sampled_states.append(proposed_state)
                     completed = True
                     print(f"Sampled state with writhe {current_writhe} and entanglement {current_entang} in bin {writhe_ranges[i]}")
-
-            # g[current_bin] += math.log(f)
-            # H[current_bin] += 1
-
-            # if np.min(H) > flatness_crit * np.mean(H):
-            #     # H.fill(0)
-            #     H = H/np.sum(H)
-            #     f = math.sqrt(f)
     
     return sampled_states
 
@@ -152,13 +136,26 @@ def main():
 
     for i, evolved in enumerate(sampled_results):
         # Save coordinates
+        # "offset_*" fixes the issue of negative coordinates being saved with PBC.
+
         for j, state in enumerate(evolved):
+            min_x = min(p[0] for p in state)
+            min_y = min(p[1] for p in state)
+            min_z = min(p[2] for p in state)
+
             max_x = max(p[0] for p in state) + 1
             max_y = max(p[1] for p in state) + 1
             max_z = max(p[2] for p in state) + 1
-            array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
+
+            offset_x = abs(min_x) if min_x < 0 else 0
+            offset_y = abs(min_y) if min_y < 0 else 0
+            offset_z = abs(min_z) if min_z < 0 else 0
+
+            # array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
+            array = np.zeros((max_x + offset_x, max_y + offset_y, max_z + offset_z), dtype=np.float64)
             for (x, y, z), val in state.items():
-                array[x, y, z] = val
+                # array[x, y, z] = val
+                array[x + offset_x, y + offset_y, z + offset_z] = val
 
             coords = np.argwhere(array>0)
             coord_dat = [(array[p[0], p[1], p[2]], p[0], p[1], p[2]) for p in coords]

@@ -6,13 +6,12 @@ import networkx as nx
 import random
 
 '''
-BFACF/Pivot algorithm with Wang-Landau sampler implementation for flat wrt dos polygonal lattice knot embeddings.
+BFACF/Pivot algorithm with strictly evolving sampler implementation for flat wrt dos polygonal lattice knot embeddings.
 
 Relevant literature: 
     * Lattice Knots: 
     * BFACF: 
     * Pivot: 
-    * Wang-Landau: 
     * Cimasoni Writhe calculation O(nlog(n)): 
     * Klenin Writhe calculation O(n^{2}): 
     * Quantum invariants of knots
@@ -20,7 +19,6 @@ Relevant literature:
 Key Features:
     * Oriented lattice knots S^{1} in Z^{3}
     * Writhe calculation (https://www.unige.ch/math/folks/cimasoni/writhe.pdf)
-    * Wang-Landau sampling toward flat writhe dos (g_w)
     * Visualization
 
 To Implement:
@@ -36,8 +34,7 @@ Currently (24/04/25):
 
 To do (15/05/25):
     * Currently there is a bug causing intersections of knot to occur which shouldnt be allowed in the BFACF algorithm.
-
-
+    * Also there are some weird pbc issues where if we go into negative space it +50's to the coordinate?
 '''
 
 def neighbours(array_dict, point):
@@ -560,9 +557,11 @@ def metropolis_acceptance(old_energy, new_energy, temperature):
     if new_energy > old_energy: # (new writhe is larger)
         return True
     else:
-        # Fix this! Accepting way too many falses
-        # return False
-        return False
+
+        ### Want to implement a dynamically changing temperature
+        acceptance_probability = np.exp((new_energy - old_energy) / temperature)
+        return np.random.rand() < acceptance_probability
+
 
 def points_on_axis(array, axis):
     '''
@@ -829,10 +828,13 @@ def BFACF(array_dict, timesteps, aimed_range):
                                                     projections_1m1m1=projections_1m1m1)
             
             new_entanglement_energy = long_range_entanglement(update_array)
-            new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
+            # new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
+            new_energy = new_writhe_energy
             
             if new_writhe_energy < target:
-                if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=0.01):
+                temp = 0.1 * (target - new_writhe_energy) / target
+
+                if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=temp):
                     array_dict = update_array
                     old_entanglement_energy = new_entanglement_energy
                     old_writhe_energy = new_writhe_energy
@@ -953,7 +955,8 @@ def pivot(array_dict, timesteps, knot, aimed_range):
                                                     projections_1m1m1=projections_1m1m1)
 
             if new_writhe_energy < target:
-                if metropolis_acceptance(old_energy=old_writhe_energy, new_energy=new_writhe_energy, temperature=0.01):
+                temp = 0.1 * (target - new_writhe_energy) / target
+                if metropolis_acceptance(old_energy=old_writhe_energy, new_energy=new_writhe_energy, temperature=temp):
                     array_dict = update_dict
                     old_writhe_energy = new_writhe_energy
             

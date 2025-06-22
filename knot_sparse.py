@@ -29,11 +29,16 @@ def main():
 
     print('Running pivot...')
     start_time = time.time()
+    # contraints = (writhe, entanglement)
+    contraints = ((7, 10), (9000, 11000))
     # pivot
-    evolved = pivot(oriented, timesteps=it*5, knot=knot_type)
+    evolved = pivot(oriented, timesteps=it*5, knot=knot_type, aimed_range=contraints)
     # bfacf (2x pivot)
-    print('Running bfacf...')
-    evolved, wr, rog = BFACF(evolved, timesteps=it*10)
+    print('Running bfacf 1...')
+    evolved, wr, rog = BFACF(evolved, timesteps=it*15, aimed_range=contraints)
+    # print('Running pivot 2...')
+    # evolved = pivot(evolved, timesteps=it*10, knot=knot_type, aimed_range=contraints)
+
     print(f'Entanglement: {rog}')
     print(f'Writhe: {wr}')
     end_time = time.time() - start_time
@@ -43,12 +48,22 @@ def main():
     print(f"Knot type consistent?: {topo}")
 
     # Convert back to array for plotting
+    min_x = min(p[0] for p in evolved)
+    min_y = min(p[1] for p in evolved)
+    min_z = min(p[2] for p in evolved)
+
     max_x = max(p[0] for p in evolved) + 1
     max_y = max(p[1] for p in evolved) + 1
     max_z = max(p[2] for p in evolved) + 1
-    array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
+
+    offset_x = abs(min_x) if min_x < 0 else 0
+    offset_y = abs(min_y) if min_y < 0 else 0
+    offset_z = abs(min_z) if min_z < 0 else 0
+
+    array = np.zeros((max_x + offset_x, max_y + offset_y, max_z + offset_z), dtype=np.float64)
+
     for (x, y, z), val in evolved.items():
-        array[x, y, z] = val
+        array[x + offset_x, y + offset_y, z + offset_z] = val
 
     # Plot result
     coords = np.argwhere(array>0)

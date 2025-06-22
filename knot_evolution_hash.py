@@ -272,7 +272,7 @@ def crumple(array_dict):
 
 #     return score
 
-def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshold=3):
+def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshold=20):
     '''
     Measures spatial proximity between distant points in sequence.
     
@@ -292,7 +292,7 @@ def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshol
             # Our knot is cyclic
             sequence_dist = min(abs(vals[i] - vals[j]), total_points - abs(vals[i] - vals[j]))
             if sequence_dist >= sequence_threshold:
-                # Euclideian distance
+                # Euclidean distance
                 spatial_dist = np.sqrt(
                     (coords[i][0] - coords[j][0]) ** 2 +
                     (coords[i][1] - coords[j][1]) ** 2 +
@@ -303,7 +303,7 @@ def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshol
     return score
 
 def radius_of_gyration(array):
-    indicies = np.argwhere(array>0)
+    indicies = np.argwhere(array > 0)
     center_of_mass = np.mean(indicies, axis=0)
     return np.sqrt(np.mean(np.sum((indicies - center_of_mass)**2, axis=1)))
 
@@ -561,6 +561,7 @@ def metropolis_acceptance(old_energy, new_energy, temperature):
         ### Want to implement a dynamically changing temperature
         acceptance_probability = np.exp((new_energy - old_energy) / temperature)
         return np.random.rand() < acceptance_probability
+        # return False
 
 
 def points_on_axis(array, axis):
@@ -739,9 +740,9 @@ def lattice_writhe_Cimasoni(array, no_points, projections_111, projections_1m11,
                                 sign = sign_distance * sign_vector_orientation
                                 # rh, lh convention
                                 if sign > 0:
-                                    wr -= 1 * (abs(val1-val2)%(lens))/(np.linalg.norm(distance))
+                                    wr -= 1 # * (abs(val1-val2)%(lens))/(np.linalg.norm(distance)**2)
                                 elif sign < 0: 
-                                    wr += 1 * (abs(val1-val2)%(lens))/(np.linalg.norm(distance))
+                                    wr += 1 # * (abs(val1-val2)%(lens))/(np.linalg.norm(distance)**2)
 
         TA += wr
     TA = TA/4
@@ -751,11 +752,22 @@ def BFACF(array_dict, timesteps, aimed_range):
     '''
     BFACF with chosen sampling methods
     '''
-    alpha = 0.5
-    max_wr = max(aimed_range)
-    min_wr = min(aimed_range)
+    # Gradient descent towards entanglement first.
+
+    wr_data = []
+    ent_data = []
+    count_data = []
+
+    alpha = 1
+
+    max_wr = max(aimed_range[0])
+    min_wr = min(aimed_range[0])
+    max_entang = max(aimed_range[1])
+    min_entang = min(aimed_range[1])
+    
     random_number = random.uniform(0, 1)
-    target = (max_wr + min_wr) / 2 + random_number * (max_wr - min_wr) / 2
+    target_wr = (max_wr + min_wr) / 2 + random_number * (max_wr - min_wr) / 2
+    target_entang = (max_entang + min_entang) / 2 + random_number * (max_entang - min_entang) / 2
 
     init_array = dict(array_dict)
     no_points = len(init_array)
@@ -781,7 +793,22 @@ def BFACF(array_dict, timesteps, aimed_range):
     
     old_energy = alpha * old_entanglement_energy + (1-alpha) * old_writhe_energy
 
+    phase = 1
+
     for time in range(timesteps):
+        if phase == 1 and target_entang - 10*(target_entang/100) < old_entanglement_energy < target_entang + 10*(target_entang/100):
+            print(f"Moved to phase 2 at: {time} steps")
+            alpha = 0
+            phase = 2
+            old_energy = old_writhe_energy
+
+        elif phase == 2 and target_wr - 10*(target_wr/100) < old_writhe_energy < target_wr + 10*(target_wr/100):
+            print(f"Target reached in: {time} steps")
+            break
+
+        wr_data.append(old_writhe_energy)
+        ent_data.append(old_entanglement_energy)
+        count_data.append(time)
         
         # print(f"simulation: {time/timesteps}")
         if time % (timesteps/10) == 0:
@@ -802,7 +829,6 @@ def BFACF(array_dict, timesteps, aimed_range):
 
         # New function to check for singular points, takes in the updated array edge checks connecting strands (forward and backward) does a sweep to check for intersections
         # Only needs to sweep neighbours of the new edge not the entire array
-
 
         status = check_verticies(update_array)
         if status < -2:#< -2:
@@ -828,19 +854,82 @@ def BFACF(array_dict, timesteps, aimed_range):
                                                     projections_1m1m1=projections_1m1m1)
             
             new_entanglement_energy = long_range_entanglement(update_array)
-            # new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
-            new_energy = new_writhe_energy
-            
-            if new_writhe_energy < target:
-                temp = 0.1 * (target - new_writhe_energy) / target
 
-                if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=temp):
-                    array_dict = update_array
-                    old_entanglement_energy = new_entanglement_energy
-                    old_writhe_energy = new_writhe_energy
-                    old_energy = new_energy
-            else:
-                continue
+            new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
+            
+            temp = 2
+
+            if phase == 1:
+                if new_entanglement_energy < target_entang:
+
+                    if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=temp):
+                        array_dict = update_array
+                        old_entanglement_energy = new_entanglement_energy
+                        old_writhe_energy = new_writhe_energy
+                        old_energy = new_energy
+                    else:
+                        continue
+                else:
+                    if metropolis_acceptance(old_energy=-old_energy, new_energy=-new_energy, temperature=temp):
+                        array_dict = update_array
+                        old_entanglement_energy = new_entanglement_energy
+                        old_writhe_energy = new_writhe_energy
+                        old_energy = new_energy
+                    else:
+                        continue
+
+            elif phase == 2:
+                if new_writhe_energy < target_wr:
+
+                    if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=temp):
+                        array_dict = update_array
+                        old_entanglement_energy = new_entanglement_energy
+                        old_writhe_energy = new_writhe_energy
+                        old_energy = new_energy
+                    else:
+                        continue
+                else:
+                    if metropolis_acceptance(old_energy=-old_energy, new_energy=-new_energy, temperature=temp):
+                        array_dict = update_array
+                        old_entanglement_energy = new_entanglement_energy
+                        old_writhe_energy = new_writhe_energy
+                        old_energy = new_energy
+                    else:
+                        continue
+
+    ### Plotting results: useful for analysis of optimal rates
+
+    # if len(wr_data)> 0:
+    #     coefficients = np.polyfit(count_data, wr_data, 1)
+    #     gradient, intercept = coefficients
+
+    #     best_fit_line = [gradient * x + intercept for x in count_data]
+
+    #     plt.plot(count_data, best_fit_line, label='Best Fit', color='red')
+    #     plt.plot(count_data, wr_data, label='Writhe Data')
+    #     plt.legend()
+    #     plt.xlabel('Time Steps')
+    #     plt.ylabel('Writhe')
+    #     plt.title('BFACF Writhe Control Rate')
+    #     plt.savefig('figs/bfacf_writhe_energy_rate_2.png')
+    #     plt.clf()
+
+    # if len(ent_data)> 0:
+    #     coefficients = np.polyfit(count_data, ent_data, 1)
+    #     gradient, intercept = coefficients
+
+    #     best_fit_line = [gradient * x + intercept for x in count_data]
+
+    #     plt.plot(count_data, best_fit_line, label='Best Fit', color='red')
+    #     plt.plot(count_data, ent_data, label='Entanglement Data')
+    #     plt.legend()
+    #     plt.xlabel('Time Steps')
+    #     plt.ylabel('Entanglement')
+    #     plt.title('BFACF Entanglement Control Rate')
+    #     plt.savefig('figs/bfacf_entanglement_energy_rate_2.png')
+    #     plt.clf()
+
+    #     print(f"Rate: {gradient}")
 
     return array_dict, old_writhe_energy, old_entanglement_energy
         
@@ -850,12 +939,20 @@ def pivot(array_dict, timesteps, knot, aimed_range):
     Notice: valid pivots occur on a shared axis in Z^{3}
     '''
 
+    wr_data = []
+    ent_data = []
+    count_data = []
+
     # Randomly pick number that determines minimizing/ maximizing/ doing nothing for writhe
-    max_wr = max(aimed_range)
-    min_wr = min(aimed_range)
+    max_wr = max(aimed_range[0])
+    min_wr = min(aimed_range[0])
+    max_entang = max(aimed_range[1])
+    min_entang = min(aimed_range[1])
+
     random_number = random.uniform(0, 1)
 
-    target = (max_wr + min_wr) / 2 + random_number * (max_wr - min_wr) / 2
+    target_wr = (max_wr + min_wr) / 2 + random_number * (max_wr - min_wr) / 2
+    target_entang = (max_entang + min_entang) / 2 + random_number * (max_entang - min_entang) / 2
 
     init_array = dict(array_dict)
     no_points = len(init_array)
@@ -876,10 +973,30 @@ def pivot(array_dict, timesteps, knot, aimed_range):
                                             projections_1m11=projections_1m11,
                                             projections_11m1=projections_11m1,
                                             projections_1m1m1=projections_1m1m1)
+    
+    old_entanglement_energy = long_range_entanglement(init_array)
 
-    # inter_dict = dict(array_dict)
+    phase = 1
+    alpha = 1
+
+    old_energy = alpha * old_entanglement_energy + (1-alpha) * old_writhe_energy
+
     for time in range(timesteps):
-        # print(time)
+        if phase == 1 and  target_entang - 10*(target_entang/100) < old_entanglement_energy < target_entang + 10*(target_entang/100):
+            print(f"Entanglement target reached in: {time} steps")
+            phase = 2
+            alpha = 0
+            old_energy = old_writhe_energy
+            break 
+
+        # elif phase == 2 and target_wr - 10*(target_wr/100) < old_writhe_energy < target_wr + 10*(target_wr/100):
+        #     print(f"Target reached in: {time} steps")
+        #     break
+
+        count_data.append(time)
+        wr_data.append(old_writhe_energy)
+        ent_data.append(old_entanglement_energy)
+
         if time % (timesteps/10) == 0:
             print(f"Pivot: {time/timesteps}")
 
@@ -953,15 +1070,69 @@ def pivot(array_dict, timesteps, knot, aimed_range):
                                                     projections_1m11=projections_1m11,
                                                     projections_11m1=projections_11m1,
                                                     projections_1m1m1=projections_1m1m1)
+            
+            new_entanglement_energy = long_range_entanglement(update_dict)
+            new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
 
-            if new_writhe_energy < target:
-                temp = 0.1 * (target - new_writhe_energy) / target
-                if metropolis_acceptance(old_energy=old_writhe_energy, new_energy=new_writhe_energy, temperature=temp):
+            # if new_writhe_energy < target_wr:
+            #     if new_entanglement_energy < target_entang:
+
+            temp = 0.0001 * (target_wr - new_writhe_energy) / target_wr
+            # temp = 0
+            if old_entanglement_energy < target_entang:
+                if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=temp):
                     array_dict = update_dict
                     old_writhe_energy = new_writhe_energy
-            
+                    old_entanglement_energy = new_entanglement_energy
+                    old_energy = new_energy
+                    
+                else:
+                    continue
             else:
-                continue
+                if metropolis_acceptance(old_energy=-old_energy, new_energy=-new_energy, temperature=temp):
+                    # Reverse search
+                    array_dict = update_dict
+                    old_writhe_energy = new_writhe_energy
+                    old_entanglement_energy = new_entanglement_energy
+                    old_energy = new_energy
+                    
+                else:
+                    continue
+
+    ### Plotting results: useful for analysis of optimal rates
+
+    # if len(wr_data) > 0:
+    #     coefficients_wr = np.polyfit(count_data, wr_data, 1)
+    #     gradient, intercept = coefficients_wr
+
+    #     best_fit_line = [gradient * x + intercept for x in count_data]
+
+    #     plt.plot(count_data, best_fit_line, label='Best Fit', color='red')
+    #     plt.plot(count_data, wr_data, label='Writhe Data')
+    #     plt.legend()
+    #     plt.xlabel('Time Steps')
+    #     plt.ylabel('Writhe')
+    #     plt.title('Pivot Writhe Control Rate')
+    #     plt.savefig('figs/pivot_writhe_energy_rate_2.png')
+    #     plt.clf()
+    
+    # if len(ent_data) > 0:
+
+    #     coefficients_ent = np.polyfit(count_data, ent_data, 1)
+    #     gradient, intercept = coefficients_ent
+
+    #     best_fit_line_ent = [gradient * x + intercept for x in count_data]
+
+    #     plt.plot(count_data, best_fit_line_ent, label='Best Fit Entanglement', color='red')
+    #     plt.plot(count_data, ent_data, label='Entanglement Data')
+    #     plt.legend()
+    #     plt.xlabel('Time Steps')
+    #     plt.ylabel('Entanglement')
+    #     plt.title('Pivot Entanglement Control Rate')
+    #     plt.savefig('figs/pivot_entanglement_energy_rate_2.png')
+    #     plt.clf()
+
+    #     print(f"Rate: {gradient}")
 
     return array_dict
 

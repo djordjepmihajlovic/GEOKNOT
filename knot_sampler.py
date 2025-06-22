@@ -33,26 +33,20 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samp
     H = np.zeros((writhe_bins, entang_bins)) # 2d matrix of histogram counts
     f = f_init
     pivot_lag = 5000
-    BFACF_lag = 10000
+    BFACF_lag = 15000
 
-    writhe_range = (0, 1000)
-    entang_range = (0, 1000)
+    # 2.) Implement dynamical logic to switch between pivot and BFACF based on the current state.
+    # 3.) Implement saving knot as correct type if generated.
+    # 4.) Implement reduction in writhe or entanglement if value is above the aimed range.
+
+    writhe_range = (0, 5)
+    entang_range = (2000, 10000)
 
     writhe_edges = np.linspace(*writhe_range, writhe_bins + 1)
     entang_edges = np.linspace(*entang_range, entang_bins + 1)
-
-    def get_bin_indices(writhe, entang):
-        writhe_idx = np.digitize(writhe, writhe_edges) - 1
-        entang_idx = np.digitize(entang, entang_edges) - 1
-
-        writhe_idx = np.clip(writhe_idx, 0, writhe_bins - 1)
-        entang_idx = np.clip(entang_idx, 0, entang_bins - 1)
-        return writhe_idx, entang_idx
     
     writhe_ranges = [(writhe_edges[i], writhe_edges[i + 1]) for i in range(len(writhe_edges) - 1)]
     entang_ranges = [(entang_edges[i], entang_edges[i + 1]) for i in range(len(entang_edges) - 1)]
-
-    print(f'Writhe ranges: {writhe_ranges}')
     
     current_state = oriented
     current_writhe = 0
@@ -62,28 +56,33 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samp
     filled_bins = set()
 
     for i in range(len(writhe_ranges)):
-        completed = False
-        while not completed:
+        for j in range(len(entang_ranges)):
+            print(f"Sampling writhe {writhe_ranges[i]} and entanglement {entang_ranges[j]}")
 
-            proposed_state = pivot(current_state, timesteps=pivot_lag, knot=knot_type, aimed_range=writhe_ranges[i])
-            proposed_state, proposed_writhe, proposed_entang = BFACF(proposed_state, timesteps=BFACF_lag, aimed_range=writhe_ranges[i])
+            completed = False
+            while not completed:
 
-            current_bin = get_bin_indices(current_writhe, current_entang)
-            proposed_bin = get_bin_indices(proposed_writhe, proposed_entang)
+                ## Currently brute force switching.
+                ## 1.) Also, we would like to sample across grid of writhe and entanglement bins, the 
+                ## evolution constraints should be dictated by the bin we are sampling.
 
-            print(proposed_bin)
-            print(filled_bins)
+                proposed_state = pivot(current_state, timesteps=pivot_lag, knot=knot_type, aimed_range=(writhe_ranges[i], entang_ranges[j]))
+                proposed_state, proposed_writhe, proposed_entang = BFACF(proposed_state, timesteps=BFACF_lag, aimed_range=(writhe_ranges[i], entang_ranges[j]))
+                # proposed_state = pivot(proposed_state, timesteps=pivot_lag, knot=knot_type, aimed_range=(writhe_ranges[i], entang_ranges[j]))
+                # proposed_state, proposed_writhe, proposed_entang = BFACF(proposed_state, timesteps=BFACF_lag, aimed_range=(writhe_ranges[i], entang_ranges[j]))
 
-            topo = Q_invariant(proposed_state, 'Uq(sl2)').alexander_polynomial_hash(knot_type) 
-            print(f"writhe: {proposed_writhe}, range: {writhe_ranges[i]}")
-            if topo == True:
-                current_writhe = proposed_writhe
-                current_entang = proposed_entang
-                if min(writhe_ranges[i])<current_writhe<max(writhe_ranges[i]):
-                    sampled_states.append(proposed_state)
-                    completed = True
-                    print(f"Sampled state with writhe {current_writhe} and entanglement {current_entang} in bin {writhe_ranges[i]}")
-    
+                topo = Q_invariant(proposed_state, 'Uq(sl2)').alexander_polynomial_hash(knot_type) 
+                print(f"writhe: {proposed_writhe}, range: {writhe_ranges[i]}")
+                print(f"entanglement: {proposed_entang}, range: {entang_ranges[j]}")
+                if topo == True:
+                    current_writhe = proposed_writhe
+                    current_entang = proposed_entang
+                    if min(writhe_ranges[i])<=current_writhe<=max(writhe_ranges[i]):
+                        if min(entang_ranges[j])<=current_entang<=max(entang_ranges[j]):
+                            sampled_states.append(proposed_state)
+                            completed = True
+                            print(f"Sampled state with writhe {current_writhe} and entanglement {current_entang} in bin [{writhe_ranges[i]}, {entang_ranges[j]}]")
+            
     return sampled_states
 
 def process_wang_landau(args):
@@ -227,19 +226,27 @@ def main():
             writhe_dist.append(writhe)
             entang_dist.append(entang)
 
-    plt.hist(writhe_dist, bins=100, density=True, alpha=0.5, label='Writhe Distribution')
+    plt.hist2d(writhe_dist, entang_dist, bins=(len(writhe_dist), len(entang_dist)), density=True, cmap='viridis')
+    plt.colorbar(label='Density')
     plt.xlabel('Writhe')
-    plt.ylabel('Density')
-    plt.title(f'Writhe Distribution for {knot_type}')
-    plt.savefig(f'samples/writhe_dist_samples_{knot_type}.png')
+    plt.ylabel('Entanglement')
+    plt.title(f'Writhe vs Entanglement Heatmap for {knot_type}')
+    plt.savefig(f'samples/writhe_entang_heatmap_{knot_type}.png')
     plt.clf()
+
+    # plt.hist(writhe_dist, bins=100, density=True, alpha=0.5, label='Writhe Distribution')
+    # plt.xlabel('Writhe')
+    # plt.ylabel('Density')
+    # plt.title(f'Writhe Distribution for {knot_type}')
+    # plt.savefig(f'samples/writhe_dist_samples_{knot_type}.png')
+    # plt.clf()
     
-    plt.hist(entang_dist, bins=100, density=True, alpha=0.5, label='Entanglement Distribution')
-    plt.xlabel('Entanglement')
-    plt.ylabel('Density')
-    plt.title(f'Entanglement Distribution for {knot_type}')
-    plt.savefig(f'samples/entang_dist_samples_{knot_type}.png')
-    plt.clf()
+    # plt.hist(entang_dist, bins=100, density=True, alpha=0.5, label='Entanglement Distribution')
+    # plt.xlabel('Entanglement')
+    # plt.ylabel('Density')
+    # plt.title(f'Entanglement Distribution for {knot_type}')
+    # plt.savefig(f'samples/entang_dist_samples_{knot_type}.png')
+    # plt.clf()
 
 par = ArgumentParser()
 '''

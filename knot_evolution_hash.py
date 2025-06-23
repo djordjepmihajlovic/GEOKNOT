@@ -272,7 +272,7 @@ def crumple(array_dict):
 
 #     return score
 
-def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshold=20):
+def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshold=5):
     '''
     Measures spatial proximity between distant points in sequence.
     
@@ -806,6 +806,8 @@ def BFACF(array_dict, timesteps, aimed_range):
             print(f"Target reached in: {time} steps")
             break
 
+        print(f"target writhe {target_wr}, writhe {old_writhe_energy}")
+
         wr_data.append(old_writhe_energy)
         ent_data.append(old_entanglement_energy)
         count_data.append(time)
@@ -857,7 +859,7 @@ def BFACF(array_dict, timesteps, aimed_range):
 
             new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
             
-            temp = 2
+            temp = 0.00001
 
             if phase == 1:
                 if new_entanglement_energy < target_entang:
@@ -880,7 +882,6 @@ def BFACF(array_dict, timesteps, aimed_range):
 
             elif phase == 2:
                 if new_writhe_energy < target_wr:
-
                     if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=temp):
                         array_dict = update_array
                         old_entanglement_energy = new_entanglement_energy
@@ -888,14 +889,14 @@ def BFACF(array_dict, timesteps, aimed_range):
                         old_energy = new_energy
                     else:
                         continue
-                else:
-                    if metropolis_acceptance(old_energy=-old_energy, new_energy=-new_energy, temperature=temp):
-                        array_dict = update_array
-                        old_entanglement_energy = new_entanglement_energy
-                        old_writhe_energy = new_writhe_energy
-                        old_energy = new_energy
-                    else:
-                        continue
+                # else:
+                #     if metropolis_acceptance(old_energy=-old_energy, new_energy=-new_energy, temperature=temp):
+                #         array_dict = update_array
+                #         old_entanglement_energy = new_entanglement_energy
+                #         old_writhe_energy = new_writhe_energy
+                #         old_energy = new_energy
+                #     else:
+                #         continue
 
     ### Plotting results: useful for analysis of optimal rates
 
@@ -1043,16 +1044,17 @@ def pivot(array_dict, timesteps, knot, aimed_range):
         if invalid == True:
             status = -np.inf
         
-        if status < -2: # <-2
+        if status < -2: 
             continue
         else:
             
-            ### Function for Muhammad to implement ###
-            # divide timesteps into 10 
-            # check topology using Q_invariant
-            # if topology not consistent within chunk reverse to previous chunk 
-            # continue
-
+            ##### Function for Muhammad to implement #####
+            # divide timesteps into 10.
+            # check topology using Q_invariant.
+            # if topology not consistent within chunk reverse to previous chunk.
+            # do an analysis on optimal amount of checks dependant on knot type.
+            # continue...
+            
             max_x = max(p[0] for p in update_dict) + 1
             max_y = max(p[1] for p in update_dict) + 1
             max_z = max(p[2] for p in update_dict) + 1
@@ -1099,7 +1101,7 @@ def pivot(array_dict, timesteps, knot, aimed_range):
                 else:
                     continue
 
-    ### Plotting results: useful for analysis of optimal rates
+    ### Plotting results: useful for analysis of optimal rates 
 
     # if len(wr_data) > 0:
     #     coefficients_wr = np.polyfit(count_data, wr_data, 1)

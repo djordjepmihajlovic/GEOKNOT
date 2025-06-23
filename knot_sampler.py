@@ -33,15 +33,15 @@ def wang_landau_sampling(oriented, knot_type, writhe_bins, entang_bins, sub_samp
     H = np.zeros((writhe_bins, entang_bins)) # 2d matrix of histogram counts
     f = f_init
     pivot_lag = 5000
-    BFACF_lag = 15000
+    BFACF_lag = 20000
 
     # 2.) Implement dynamical logic to switch between pivot and BFACF based on the current state.
     # 3.) Implement saving knot as correct type if generated.
     # 4.) Implement reduction in writhe or entanglement if value is above the aimed range.
     # 5.) writhe_range and entang_range should be passed as arguments to the sampling function.
 
-    writhe_range = (0, 15)
-    entang_range = (2000, 12000)
+    writhe_range = (0, 35)
+    entang_range = (500, 3000)
 
     writhe_edges = np.linspace(*writhe_range, writhe_bins + 1)
     entang_edges = np.linspace(*entang_range, entang_bins + 1)

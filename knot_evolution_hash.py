@@ -32,9 +32,9 @@ Currently (24/04/25):
     * Writhe calc and specific projections (apparently (np.pi, np.e, sqrt(2))) might be a bad idea...
     * Maybe experiment with slightly more frequent topology checks? (dependent on how quickly 3_1 samples...)
 
-To do (15/05/25):
-    * Currently there is a bug causing intersections of knot to occur which shouldnt be allowed in the BFACF algorithm.
-    * Also there are some weird pbc issues where if we go into negative space it +50's to the coordinate?
+To do (23/06/25):
+    * Currently theres an issue with how BFACF is implemented that needs to be checked; topology seems to change when its not supposed to.
+    
 '''
 
 def neighbours(array_dict, point):
@@ -806,8 +806,6 @@ def BFACF(array_dict, timesteps, aimed_range):
             print(f"Target reached in: {time} steps")
             break
 
-        print(f"target writhe {target_wr}, writhe {old_writhe_energy}")
-
         wr_data.append(old_writhe_energy)
         ent_data.append(old_entanglement_energy)
         count_data.append(time)
@@ -990,9 +988,24 @@ def pivot(array_dict, timesteps, knot, aimed_range):
             old_energy = old_writhe_energy
             break 
 
-        # elif phase == 2 and target_wr - 10*(target_wr/100) < old_writhe_energy < target_wr + 10*(target_wr/100):
-        #     print(f"Target reached in: {time} steps")
-        #     break
+        # if time<10 or time%int(timesteps/no_topology_checks) == 0:
+        #     # Check topology a set time, also first few timesteps before big conformational changes
+        #     print('Checking topology consistency...')
+        #     topo = Q_invariant(array_dict, 'Uq(sl2)').alexander_polynomial_hash(knot=knot) 
+        #     if topo:
+        #         prev_array_dict_chunk = array_dict
+        #         prev_energy_chunk = old_energy
+        #         prev_entang_chunk = old_entanglement_energy
+        #         prev_writhe_chunk = old_writhe_energy
+        #         print('Topology consistent, continue...')
+        #         continue
+                
+        #     else:
+        #         array_dict = prev_array_dict_chunk
+        #         old_energy = prev_energy_chunk
+        #         old_entanglement_energy = prev_entang_chunk
+        #         old_writhe_energy = prev_writhe_chunk
+        #         print('Inconsistent topology reverting back to previous instance...')
 
         count_data.append(time)
         wr_data.append(old_writhe_energy)
@@ -1075,7 +1088,7 @@ def pivot(array_dict, timesteps, knot, aimed_range):
             
             new_entanglement_energy = long_range_entanglement(update_dict)
             new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
-
+            
             # if new_writhe_energy < target_wr:
             #     if new_entanglement_energy < target_entang:
 

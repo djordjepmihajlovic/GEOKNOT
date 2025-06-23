@@ -30,7 +30,7 @@ def main():
     print('Running pivot...')
     start_time = time.time()
     # contraints = (writhe, entanglement)
-    contraints = ((0, 3), (0, 500))
+    contraints = ((30, 35), (2000, 3000))
     # pivot
     evolved = pivot(oriented, timesteps=it*5, knot=knot_type, aimed_range=contraints)
     # bfacf (2x pivot)

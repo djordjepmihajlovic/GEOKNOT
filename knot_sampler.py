@@ -8,6 +8,7 @@ from multiprocessing import Pool
 import os
 import math
 import numpy as np
+import csv
 
 '''
 Its always useful to write down ideas:)
@@ -18,7 +19,7 @@ Could do this for a range?
 Also; if an 0_1 or 3_1 change; save them as respective knot.
 '''
 
-def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bins, sub_samples, f_init=math.e, flatness_crit=0.99):
+def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bins):
     '''
     Need a way to randomly implement levels of energy checking to get samples that are highly writhed
     Set no. bins = no. sub_samples, then we want each bin to be filled w exactly one sample.
@@ -29,9 +30,6 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
     ### Say if we get a knot with correct writhe bin but wrong type -> perturb into correct type.
     ### Would need to find a way of locating the right components to perturb.
 
-    g = np.zeros((writhe_bins, entang_bins)) # 2d matrix of log probs
-    H = np.zeros((writhe_bins, entang_bins)) # 2d matrix of histogram counts
-    f = f_init
     pivot_lag = 5000
     BFACF_lag = 20000
 
@@ -54,14 +52,15 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
     current_entang = 0
     sampled_states = []
 
-    filled_bins = set()
+    instance_per_range = []
 
     for i in range(len(writhe_ranges)):
         for j in range(len(entang_ranges)):
             print(f"Sampling writhe {writhe_ranges[i]} and entanglement {entang_ranges[j]}")
-
+            instance = 0
             completed = False
             while not completed:
+                instance += 1
 
                 ## Currently brute force switching.
                 ## 1.) Also, we would like to sample across grid of writhe and entanglement bins, the 
@@ -75,7 +74,8 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
                 topo = Q_invariant(proposed_state, 'Uq(sl2)').alexander_polynomial_hash(knot_type) 
                 print(f"writhe: {proposed_writhe}, range: {writhe_ranges[i]}")
                 print(f"entanglement: {proposed_entang}, range: {entang_ranges[j]}")
-                if topo == True:
+
+                if topo == False: # ensure topology is not 0_1
                     current_writhe = proposed_writhe
                     current_entang = proposed_entang
                     if min(writhe_ranges[i])<=current_writhe<=max(writhe_ranges[i]):
@@ -116,18 +116,19 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
                             w = [wx[0] for wx in elements]
                             new_coord_w = [(w[idx],) + coord for idx, coord in enumerate(new_coord)]
 
-                            np.savetxt(f'samples/{knot_type}_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv', new_coord_w, delimiter=",", fmt='%.5f')
+                            np.savetxt(f'samples/K_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv', new_coord_w, delimiter=",", fmt='%.5f')
                             sampled_states.append([partition, int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2)])
+                            instance_per_range.append([int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2), instance])
             
-    return sampled_states
+    return sampled_states, instance_per_range
 
 def process_wang_landau(args):
 
-    i, oriented, knot_type, writhe_bins, rog_bins, sub_samples = args
+    i, oriented, knot_type, writhe_bins, rog_bins = args
 
-    sampled_states = wang_landau_sampling(i, oriented, knot_type, writhe_bins, rog_bins, sub_samples)
+    sampled_states, instance_per_range = wang_landau_sampling(i, oriented, knot_type, writhe_bins, rog_bins)
 
-    return sampled_states
+    return sampled_states, instance_per_range
 
 
 def main():
@@ -159,55 +160,23 @@ def main():
     writhe_bins = sub_samples
     rog_bins = sub_samples
 
-    args_list = [(i, oriented, knot_type, writhe_bins, rog_bins, sub_samples) for i in range(samples)]
+    args_list = [(i, oriented, knot_type, writhe_bins, rog_bins) for i in range(samples)]
 
     with Pool(processes=num_processes) as pool: 
-        results = pool.map(process_wang_landau, args_list)  # Parallelize over `samples`
+        results = pool.map(process_wang_landau, args_list)  # Parallelize over samples
 
     run_time = time.time() - start_time
     print(run_time)
 
-    sampled_results = [r for r in results]          # list of all sampled states
+    sampled_results = [r[0] for r in results]          # list of all sampled states
+    times = [r[1] for r in results]
 
-    # for i, evolved in enumerate(sampled_results):
-    #     # Save coordinates
-    #     # "offset_*" fixes the issue of negative coordinates being saved with PBC.
+    with open('samples/time_data.csv', mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Writhe Bin', 'Entanglement Bin', 'Instances'])  # Header row
+        for time_entry in times:
+            writer.writerow(time_entry)
 
-    #     for j, state in enumerate(evolved):
-    #         min_x = min(p[0] for p in state)
-    #         min_y = min(p[1] for p in state)
-    #         min_z = min(p[2] for p in state)
-
-    #         max_x = max(p[0] for p in state) + 1
-    #         max_y = max(p[1] for p in state) + 1
-    #         max_z = max(p[2] for p in state) + 1
-
-    #         offset_x = abs(min_x) if min_x < 0 else 0
-    #         offset_y = abs(min_y) if min_y < 0 else 0
-    #         offset_z = abs(min_z) if min_z < 0 else 0
-
-    #         # array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
-    #         array = np.zeros((max_x + offset_x, max_y + offset_y, max_z + offset_z), dtype=np.float64)
-    #         for (x, y, z), val in state.items():
-    #             # array[x, y, z] = val
-    #             array[x + offset_x, y + offset_y, z + offset_z] = val
-
-    #         coords = np.argwhere(array>0)
-    #         coord_dat = [(array[p[0], p[1], p[2]], p[0], p[1], p[2]) for p in coords]
-
-    #         elements = sorted(coord_dat, key=lambda x: x[0])
-    #         print(elements)
-            
-    #         joggle_scale = 1e-2
-    #         np.random.seed(42)
-    #         elements_jiggled = [np.array([i[1:4] for i in elements], dtype=float) +
-    #         np.random.normal(scale=joggle_scale, size=(len(elements), 3))]
-
-    #         new_coord = [tuple(row) for row in elements_jiggled[0]]
-    #         w = [i[0] for i in elements]
-    #         new_coord_w = [(w[idx],) + coord for idx, coord in enumerate(new_coord)]
-
-    #         np.savetxt(f'samples/{knot_type}_{i}_{j}.csv', new_coord_w, delimiter=",", fmt='%.5f')
 
     writhe_dist = []
     entang_dist = []
@@ -224,7 +193,7 @@ def main():
     #     for j in range(sub_samples):
 
             print(f'Checking: {j[0]},{j[1]},{j[2]}')
-            file = np.loadtxt(f'samples/{knot_type}_{j[0]}_{j[1]}_{j[2]}.csv', delimiter=',', dtype=int)
+            file = np.loadtxt(f'samples/K_{j[0]}_{j[1]}_{j[2]}.csv', delimiter=',', dtype=int)
             load = read_array(file)
             array = load.copy() # this will load an integer rounded version
             no_points = len(np.argwhere(array)>0)
@@ -265,26 +234,49 @@ def main():
             writhe_dist.append(writhe)
             entang_dist.append(entang)
 
+    # x_coords = [item[0] for item in times]
+    # y_coords = [item[1] for item in times]
+    # values = [item[2] for item in times]
+
+    # # Create a grid for the heatmap
+    # x_bins = np.unique(x_coords)
+    # y_bins = np.unique(y_coords)
+    # heatmap = np.zeros((len(x_bins), len(y_bins)))
+
+    # # Populate the heatmap grid
+    # for x, y, value in times:
+    #     x_idx = np.where(x_bins == x)[0][0]
+    #     y_idx = np.where(y_bins == y)[0][0]
+    #     heatmap[x_idx, y_idx] = value
+
+    # # Plot the heatmap
+    # plt.imshow(heatmap, origin='lower', cmap='viridis', extent=[min(x_bins), max(x_bins), min(y_bins), max(y_bins)])
+    # plt.colorbar(label='Iterations.')
+    # plt.xlabel('Writhe')
+    # plt.ylabel('Entanglement')
+    # plt.title('Heatmap of Instances per Range')
+    # plt.show()
+
     plt.hist2d(writhe_dist, entang_dist, bins=(len(writhe_dist), len(entang_dist)), density=True, cmap='viridis')
     plt.colorbar(label='Density')
     plt.xlabel('Writhe')
     plt.ylabel('Entanglement')
-    plt.title(f'Writhe vs Entanglement Heatmap for {knot_type}')
-    plt.savefig(f'samples/writhe_entang_heatmap_{knot_type}.png')
+    plt.title(f'Writhe vs Entanglement Heatmap for non-trivial knots')
+    plt.savefig(f'samples/writhe_entang_heatmap_ntk.png')
     plt.clf()
 
     plt.hist(writhe_dist, bins=100, density=True, alpha=0.5, label='Writhe Distribution')
     plt.xlabel('Writhe')
     plt.ylabel('Density')
-    plt.title(f'Writhe Distribution for {knot_type}')
-    plt.savefig(f'samples/writhe_dist_samples_{knot_type}.png')
+    plt.title(f'Writhe Distribution for non-trivial knots')
+    plt.savefig(f'samples/writhe_dist_samples_ntk.png')
     plt.clf()
     
     plt.hist(entang_dist, bins=100, density=True, alpha=0.5, label='Entanglement Distribution')
     plt.xlabel('Entanglement')
     plt.ylabel('Density')
-    plt.title(f'Entanglement Distribution for {knot_type}')
-    plt.savefig(f'samples/entang_dist_samples_{knot_type}.png')
+    plt.title(f'Entanglement Distribution for non-trivial knots')
+    plt.savefig(f'samples/entang_dist_samples_ntk.png')
     plt.clf()
 
 par = ArgumentParser()
@@ -310,3 +302,7 @@ if __name__ == "__main__":
     sub_samples = args.no_sub_samples
 
     main()
+## Depending on how quickly the code runs (16:04 23/06) I might want to alter the code s.t. it terminates the search for configurations of 
+## certain types after some time.
+## Analysis of times taken to sample each would be good
+## Also (24/06) lets make a dataset of unknot versus knot

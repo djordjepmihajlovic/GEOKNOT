@@ -30,7 +30,7 @@ def main():
     print('Running pivot...')
     start_time = time.time()
     # contraints = (writhe, entanglement)
-    contraints = ((30, 35), (2000, 3000))
+    contraints = ((30, 35), (1000, 1500))
     # pivot
     evolved = pivot(oriented, timesteps=it*5, knot=knot_type, aimed_range=contraints)
     # bfacf (2x pivot)
@@ -79,9 +79,6 @@ def main():
     new_coord = [tuple(row) for row in elements_jiggled[0]]
     w = [i[0] for i in elements]
     new_coord_w = [(w[idx],) + coord for idx, coord in enumerate(new_coord)]
-
-    print(new_coord_w)
-    ### new_coord_w now contains jiggled coords. Want to change action of plot_3d_line to work with this.
 
     im = lattice_writhe_Klenin(new_coord_w)
     print(np.sum(im))

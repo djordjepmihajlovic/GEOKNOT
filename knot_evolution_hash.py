@@ -34,7 +34,12 @@ Currently (24/04/25):
 
 To do (23/06/25):
     * Currently theres an issue with how BFACF is implemented that needs to be checked; topology seems to change when its not supposed to.
-    
+    * I want to implement a mechanism (probably a bias in the BFACF moves) to ensure `threading' occurs to the knots
+    * Idea:
+    * define arcs/loops (some subsection of the knot) 
+    * calculate the center of mass of chosen loop. find plane that arc closes 
+    * move a chosen point through the perturbed center of mass.
+
 '''
 
 def neighbours(array_dict, point):
@@ -272,6 +277,24 @@ def crumple(array_dict):
 
 #     return score
 
+def threading(array_dict, min_length = 3, max_length = 10):
+    '''
+    Define arcs/loops (some subsection of the knot) 
+    calculate the center of mass of chosen loop. find plane that arc closes 
+    move a chosen point through the perturbed center of mass.
+    '''
+
+    coords = list(array_dict.keys())
+
+    sequence_length = random.randint(min_length, max_length)
+    random_point = random.randint(0, len(coords))
+    sample_sequence = []
+    for i in range(0, sequence_length):
+        sample_sequence.append()
+
+    return None
+
+
 def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshold=5):
     '''
     Measures spatial proximity between distant points in sequence.
@@ -281,7 +304,6 @@ def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshol
     Returns:
     score counting long-range spatial entanglements
     '''
-
     coords = list(array_dict.keys())
     vals = [array_dict[c] for c in coords]
     score = 0

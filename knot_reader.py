@@ -1,11 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm 
-import matplotlib.colors as mcolors  
 from knot_init import *
 from defunct.knot_evolution import lattice_writhe_Klenin
+from quantum_knot_invs import *
 
-# knot = np.loadtxt('/Users/s1910360/Desktop/min_wrentang_0_1.csv', delimiter=',', dtype=np.float64)
+# knot = np.loadtxt('/Users/s1910360/Desktop/0_1_2506/0_1_8_32_1392.csv', delimiter=',', dtype=np.float64)
 # knot = np.loadtxt('examples/config_0_1.csv', delimiter=',', dtype=np.float64)
 
 def read_array(knot):
@@ -28,6 +27,10 @@ def read_coord(knot):
     #         coord_list[i] = (coord_list[i][0], coord_list[i][1], coord_list[i][2], float(coord_list[i][3]) - 100)
 
     return coord_list
+
+# Check topology
+# proposed_state = {tuple(coord[1:]): coord[0] for coord in read_coord(knot)}
+# topo = Q_invariant(proposed_state, 'Uq(sl2)').alexander_polynomial_hash('0_1', joggle=False)
 
 # im = lattice_writhe_Klenin(read_coord(knot))
 # print(np.sum(im))

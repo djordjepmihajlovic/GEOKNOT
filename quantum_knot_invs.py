@@ -454,7 +454,7 @@ class Q_invariant:
         print(x)
         return l
     
-    def alexander_polynomial_hash(self, knot):
+    def alexander_polynomial_hash(self, knot, joggle = True):
         '''
         KymoKnot: https://github.com/luca-tubiana/KymoKnot
         '''
@@ -468,7 +468,11 @@ class Q_invariant:
         elements = sorted(elements, key=lambda x: x[0])
         elements.append(elements[0])
         
-        joggle_scale = 1e-4
+        if joggle == True:
+            joggle_scale = 1e-2
+        else:
+            joggle_scale = 0
+
         elements = [np.array([i[1:4] for i in elements], dtype=float) +
         np.random.normal(scale=joggle_scale, size=(len(elements), 3))]
 

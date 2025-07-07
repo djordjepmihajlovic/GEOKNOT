@@ -75,7 +75,7 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
                 print(f"writhe: {proposed_writhe}, range: {writhe_ranges[i]}")
                 print(f"entanglement: {proposed_entang}, range: {entang_ranges[j]}")
 
-                if topo == True: # ensure topology is 0_1
+                if topo == False: # ensure topology is not 0_1
                     current_writhe = proposed_writhe
                     current_entang = proposed_entang
                     if min(writhe_ranges[i])<=current_writhe<=max(writhe_ranges[i]):
@@ -116,7 +116,7 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
                             w = [wx[0] for wx in elements]
                             new_coord_w = [(w[idx],) + coord for idx, coord in enumerate(new_coord)]
 
-                            np.savetxt(f'samples/tk_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv', new_coord_w, delimiter=",", fmt='%.5f')
+                            np.savetxt(f'samples/ntk_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv', new_coord_w, delimiter=",", fmt='%.5f')
                             sampled_states.append([partition, int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2)])
                             instance_per_range.append([int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2), instance])
             

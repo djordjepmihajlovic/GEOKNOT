@@ -32,15 +32,13 @@ def main():
     # contraints = (writhe, entanglement)
     contraints = ((30, 35), (1000, 1500))
     # pivot
-    evolved = pivot(oriented, timesteps=it*5, knot=knot_type, aimed_range=contraints)
+    # evolved = pivot(oriented, timesteps=it*1, knot=knot_type, aimed_range=contraints)
     # bfacf (2x pivot)
     print('Running bfacf 1...')
-    evolved, wr, rog = BFACF(evolved, timesteps=it*30, aimed_range=contraints)
+    evolved = loopBFACF(oriented, timesteps=it*5)
     # print('Running pivot 2...')
     # evolved = pivot(evolved, timesteps=it*10, knot=knot_type, aimed_range=contraints)
 
-    print(f'Entanglement: {rog}')
-    print(f'Writhe: {wr}')
     end_time = time.time() - start_time
     print("Simulation time:", end_time)
 
@@ -71,7 +69,7 @@ def main():
 
     elements = sorted(coord_dat, key=lambda x: x[0])
     
-    joggle_scale = 1e-2
+    joggle_scale = 0
     np.random.seed(42)
     elements_jiggled = [np.array([i[1:4] for i in elements], dtype=float) +
     np.random.normal(scale=joggle_scale, size=(len(elements), 3))]

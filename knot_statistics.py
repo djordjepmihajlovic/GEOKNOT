@@ -20,18 +20,23 @@ def load_func(partitions, writhe_bins, entang_bins):
     entang_ranges = [(entang_edges[i], entang_edges[i + 1]) for i in range(len(entang_edges) - 1)]
     states = []
 
+    number = 0
+
     for i in partitions:
         for j in range(len(writhe_ranges)):
             for k in range(len(entang_ranges)):
-                knot = np.loadtxt(f'/Users/s1910360/Desktop/0_1_2506/0_1_{i}_{int((writhe_ranges[j][0]+writhe_ranges[j][1])/2)}_{int((entang_ranges[k][0]+entang_ranges[k][1])/2)}.csv', delimiter=',', dtype=np.float64)
+                knot = np.loadtxt(f'/Users/s1910360/Desktop/ntk/K_{i}_{int((writhe_ranges[j][0]+writhe_ranges[j][1])/2)}_{int((entang_ranges[k][0]+entang_ranges[k][1])/2)}.csv', delimiter=',', dtype=np.float64)
                 proposed_state = {tuple(coord[1:]): coord[0] for coord in read_coord(knot)}
                 topo = Q_invariant(proposed_state, 'Uq(sl2)').alexander_polynomial_hash('0_1', joggle=False)
-                if topo:
+                if not topo:
                     print('Knot type consistent...')
-                    im = lattice_writhe_Klenin(read_coord(knot))
-                    states.append([np.sum(im), i, int((writhe_ranges[j][0]+writhe_ranges[j][1])/2), int((entang_ranges[k][0]+entang_ranges[k][1])/2)])
+                    # im = lattice_writhe_Klenin(read_coord(knot))
                 else:
                     print(f'Inconsistent knot found! @ {i}, {int((writhe_ranges[j][0]+writhe_ranges[j][1])/2)}, {int((entang_ranges[k][0]+entang_ranges[k][1])/2)}')
+                    states.append([i, int((writhe_ranges[j][0]+writhe_ranges[j][1])/2), int((entang_ranges[k][0]+entang_ranges[k][1])/2)])
+                    number +=1
+    
+    print(number)
 
     return states
 
@@ -55,24 +60,24 @@ def read_coord(knot):
 writhe_bins = entang_bins = 7
 partitions = np.arange(0, 10)
 
-# samples = load_func(partitions, writhe_bins, entang_bins)
+samples = load_func(partitions, writhe_bins, entang_bins)
 
-# with open('samples/sample_stats.csv', mode='w', newline='') as file:
-#     writer = csv.writer(file)
-#     writer.writerow(['Writhe', 'Partition', 'Wr_bin', 'Ent_bin'])  # Header row
-#     for entry in samples:
-#         writer.writerow(entry)
+with open('samples/wrong_labels_ntk.csv', mode='w', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(['Writhe', 'Partition', 'Wr_bin', 'Ent_bin'])  # Header row
+    for entry in samples:
+        writer.writerow(entry)
 
-data = []
-colors = []
-with open('samples/sample_stats.csv', mode='r') as file:
-    reader = csv.reader(file)
-    next(reader)  # Skip the header row
-    for row in reader:
-        writhe = float(row[0])  # First value per row
-        partition = int(row[1])  # Second value per row
-        data.append(writhe)
-        colors.append(partition)
+# data = []
+# colors = []
+# with open('samples/wrong_labels_tk.csv', mode='r') as file:
+#     reader = csv.reader(file)
+#     next(reader)  # Skip the header row
+#     for row in reader:
+#         writhe = float(row[0])  # First value per row
+#         partition = int(row[1])  # Second value per row
+#         data.append(writhe)
+#         colors.append(partition)
 
-plt.hist(data)
-plt.show()
+# plt.hist(data)
+# plt.show()

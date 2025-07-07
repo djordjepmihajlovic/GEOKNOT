@@ -277,23 +277,46 @@ def crumple(array_dict):
 
 #     return score
 
-def threading(array_dict, min_length = 3, max_length = 10):
+def threading(array_dict, min_length = 5, max_length = 20):
     '''
     Define arcs/loops (some subsection of the knot) 
     calculate the center of mass of chosen loop. find plane that arc closes 
     move a chosen point through the perturbed center of mass.
     '''
 
-    coords = list(array_dict.keys())
-
     sequence_length = random.randint(min_length, max_length)
-    random_point = random.randint(0, len(coords))
+    coords = list(array_dict.keys())
+    vals = [array_dict[c] for c in coords]
+    random_point_loop = random.choice(vals)
+
     sample_sequence = []
-    for i in range(0, sequence_length):
-        sample_sequence.append()
+    for i in range(random_point_loop, random_point_loop+sequence_length):
+        for coord in coords:
+            if array_dict[coord] == i:
+                sample_sequence.append(coord)
 
-    return None
+    print(f'Selected sequence: {sample_sequence}, with values: {[array_dict[c] for c in sample_sequence]}')
 
+    centre_of_mass = np.mean(np.array(sample_sequence), axis=0)
+    print(f'Centre of mass: {centre_of_mass}')
+
+    random_point_thread = random.choice(vals)
+    print(f'Random point for threading: {random_point_thread}')
+
+    # find shared plane of points
+    # perturb centre of mass along normal to plane
+    print(sample_sequence[0])
+    AC = np.array(sample_sequence[0]) - np.array(sample_sequence[1])
+    AB = np.array(sample_sequence[0]) - np.array(sample_sequence[2])
+    normal_vector = np.cross(AC, AB).astype(np.float64)  # Ensure float64 type
+    normal_vector /= np.linalg.norm(normal_vector)
+    perturbation = np.random.normal(scale=0.2, size=3)  # Small perturbation
+
+    target_point = centre_of_mass + normal_vector * perturbation
+
+    print(random_point_thread)
+
+    return target_point, random_point_thread
 
 def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshold=5):
     '''
@@ -954,6 +977,80 @@ def BFACF(array_dict, timesteps, aimed_range):
 
     return array_dict, old_writhe_energy, old_entanglement_energy
         
+
+def loopBFACF(array_dict, timesteps):
+    '''
+    BFACF with chosen sampling methods
+    '''
+    # Gradient descent towards entanglement first.
+
+
+    init_array = dict(array_dict)
+    max_x = max(p[0] for p in init_array) + 1
+    max_y = max(p[1] for p in init_array) + 1
+    max_z = max(p[2] for p in init_array) + 1
+    init2array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
+    for (x, y, z), val in init_array.items():
+        init2array[x, y, z] = val
+
+
+    target, thread = threading(init_array)
+    target_vec = [pos for pos, val in array_dict.items() if val == thread]
+    old_energy = 1/np.linalg.norm(np.array(target_vec[0]) - np.array(thread))
+
+    completed = False
+
+    for time in range(timesteps):
+        if completed:
+            break
+        if time % (timesteps/10) == 0:
+            print(f"BFACF: {time/timesteps}")
+
+        update_array = dict(array_dict)
+
+        # choose an edge +- 5 from thread
+        valid_indicies = [pos for pos, val in array_dict.items() if abs(val - thread) <= 5]
+
+        random_edge = random.choice(valid_indicies)
+        new_edge = find_new(update_array,random_edge)
+
+        if new_edge == (-1, -1, -1, -1):
+            continue
+
+        old_val = array_dict[random_edge]
+        del update_array[random_edge]
+        update_array[new_edge[:3]] = update_array.get(new_edge[:3], 0) + old_val
+
+        # New function to check for singular points, takes in the updated array edge checks connecting strands (forward and backward) does a sweep to check for intersections
+        # Only needs to sweep neighbours of the new edge not the entire array
+
+        status = check_verticies(update_array)
+        if status < -2:#< -2:
+            continue
+        else:
+
+            max_x = max(p[0] for p in update_array) + 1
+            max_y = max(p[1] for p in update_array) + 1
+            max_z = max(p[2] for p in update_array) + 1
+            update2array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
+            for (x, y, z), val in update_array.items():
+                update2array[x, y, z] = val
+
+            # Euclidean distance between thread and target
+            new_energy = 1/np.linalg.norm(np.array(new_edge[:3]) - np.array(target))
+
+            if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=0.01):
+                array_dict = update_array
+                old_energy = new_energy
+                print('new_energy accepted')
+            else:
+                continue
+
+        print(new_energy)
+
+    return array_dict
+
+
 def pivot(array_dict, timesteps, knot, aimed_range):
     '''
     Pivot algorithm to increase autocorrelation of samples.

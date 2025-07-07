@@ -39,7 +39,7 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
     # 5.) writhe_range and entang_range should be passed as arguments to the sampling function.
 
     writhe_range = (0, 35)
-    entang_range = (500, 3000)
+    entang_range = (750, 2750) # maybe make convergence slightly faster
 
     writhe_edges = np.linspace(*writhe_range, writhe_bins + 1)
     entang_edges = np.linspace(*entang_range, entang_bins + 1)

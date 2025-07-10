@@ -11,7 +11,7 @@ def load_propagator(knot_type, Nbeads):
     '''
 
     fname_sts = f"3DSignedWrithe_{knot_type}_small.dat.lp10.dat"
-    my_knot_dir = "/data/"
+    my_knot_dir = "data/"
     ab_propagator = np.loadtxt(os.path.join(my_knot_dir, fname_sts))
     ab_propagator = ab_propagator.reshape(-1, Nbeads, Nbeads)
     return ab_propagator
@@ -56,7 +56,7 @@ def compute_feynman_diagram(ab_propagator, samples):
 
 def main():
     knots = ["smallntk", "smalltk"]
-    set_num_threads(50)
+    set_num_threads(1)
     for x in knots:
         propagators = load_propagator(x, 152) # this is quite slow
         print("Gauge propagator loaded")

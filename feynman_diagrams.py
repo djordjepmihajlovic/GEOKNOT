@@ -17,12 +17,11 @@ def load_propagator(knot_type, Nbeads):
     return ab_propagator
 
 @njit(parallel = True)
-def compute_feynman_diagram(ab_propagator):
+def compute_feynman_diagram(ab_propagator, samples):
     '''
-    Calculate the Vassiliev invariants (second order) for a given knot
+    Calculate the non-trivalent 'abelian propagator' Feynman diagrams
     '''
 
-    samples = 400 # number of knots to be calculated.
     feynman_data_1 = np.zeros((samples, 1)) # [[0, 1]]
     feynman_data_2 = np.zeros((samples, 2)) # [[0, 1, 2, 3], [0, 2, 1, 3]]
     feynman_data_3 = np.zeros((samples, 5)) # [[0, 1, 2, 3, 4, 5],[0, 1, 2, 4, 3, 5],[0, 1, 2, 5, 3, 4],[0, 2, 1, 4, 3, 5],[0, 3, 1, 4, 2, 5]]
@@ -53,6 +52,8 @@ def compute_feynman_diagram(ab_propagator):
 
     return feynman_data_1, feynman_data_2, feynman_data_3
 
+
+
 def main():
     knots = ["smallntk", "smalltk"]
     set_num_threads(50)
@@ -61,7 +62,7 @@ def main():
         print("Gauge propagator loaded")
         print("Calculating possible feynman diagrams...")
         start_time = time.time()
-        v1, v2, v3 = compute_feynman_diagram(propagators)
+        v1, v2, v3 = compute_feynman_diagram(propagators, len(propagators))
         print(time.time()-start_time)
         np.savetxt(f'samples/feynman_diagram_{x}_1.csv', v1[:,0])
         np.savetxt(f'samples/feynman_diagram_{x}_21.csv', v2[:,0])

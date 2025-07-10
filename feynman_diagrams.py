@@ -56,7 +56,7 @@ def compute_feynman_diagram(ab_propagator, samples):
 
 def main():
     knots = ["smallntk", "smalltk"]
-    set_num_threads(1)
+    set_num_threads(50)
     for x in knots:
         propagators = load_propagator(x, 152) # this is quite slow
         print("Gauge propagator loaded")

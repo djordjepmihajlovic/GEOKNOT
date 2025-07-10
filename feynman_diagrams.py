@@ -1,5 +1,4 @@
 import os
-import csv
 import time
 import numpy as np
 from numba import njit, prange, set_num_threads

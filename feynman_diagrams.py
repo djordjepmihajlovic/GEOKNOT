@@ -11,7 +11,7 @@ def load_propagator(knot_type, Nbeads):
     '''
 
     fname_sts = f"3DSignedWrithe_{knot_type}_small.dat.lp10.dat"
-    my_knot_dir = "data/"
+    my_knot_dir = "PyKnotData/data/"
     ab_propagator = np.loadtxt(os.path.join(my_knot_dir, fname_sts))
     ab_propagator = ab_propagator.reshape(-1, Nbeads, Nbeads)
     return ab_propagator

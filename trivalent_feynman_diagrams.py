@@ -72,7 +72,7 @@ def load_curve(knot_type, Nbeads):
     '''
 
     fname_sts = f"{knot_type}.csv"
-    my_knot_dir = "data/"
+    my_knot_dir = "PyKnotData/data/" # cluster loc
     curve = np.loadtxt(os.path.join(my_knot_dir, fname_sts))
     curve = curve.reshape(-1, Nbeads, 3)
     return curve

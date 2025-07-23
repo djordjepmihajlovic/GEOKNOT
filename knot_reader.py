@@ -4,7 +4,7 @@ from knot_init import *
 from defunct.knot_evolution import lattice_writhe_Klenin
 from quantum_knot_invs import *
 
-# knot = np.loadtxt('/Users/s1910360/Desktop/ntk/K_9_7_2821.csv', delimiter=',', dtype=np.float64)
+knot = np.loadtxt('/Users/s1910360/Desktop/ntk/K_9_7_2821.csv', delimiter=',', dtype=np.float64)
 # knot = np.loadtxt('examples/config_0_1.csv', delimiter=',', dtype=np.float64)
 
 def read_array(knot):

@@ -1,0 +1,6 @@
+#iterations, algorithm, density, parallelization, time
+1000, pivot, sparse, unparallel, 21
+1000, pivot, dense, unparallel, 100
+10000, bfacf, sparse, unparallel, 37
+10000, bfacf, dense, unparallel, 435
+10000, bfacf, dense, parallel, 24

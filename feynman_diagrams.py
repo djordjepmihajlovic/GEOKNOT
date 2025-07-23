@@ -52,8 +52,6 @@ def compute_feynman_diagram(ab_propagator, samples):
 
     return feynman_data_1, feynman_data_2, feynman_data_3
 
-
-
 def main():
     knots = ["smallntk", "smalltk"]
     set_num_threads(50)

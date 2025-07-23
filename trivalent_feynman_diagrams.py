@@ -219,6 +219,6 @@ def main():
             tri.append(volume)
 
         tri_array = np.array(tri)  
-        np.savez_compressed(f'data/3DSignedTri_small{x}.npz', tri_array=tri_array)
+        np.savez_compressed(f'3DSignedTri_small{x}.npz', tri_array=tri_array)
 
 main()

@@ -8,6 +8,44 @@ from sympy import symbols, sqrt, Matrix, diff, lambdify, pycode
 Automatic differential version
 '''
 
+def generate_derivatives():
+    y1,y2,y3,x1,x2,x3,z1,z2,z3 = symbols('y1 y2 y3 x1 x2 x3 z1 z2 z3')
+    x = Matrix([x1, x2, x3])
+    y = Matrix([y1, y2, y3])
+    z = Matrix([z1, z2, z3])
+
+    dIdydz = [[[None for _ in range(3)] for _ in range(3)] for _ in range(3)]
+
+    for sigma in range(3):
+        for jy in range(3):
+            for jz in range(3):
+                dIdydz[sigma][jy][jz] = diff(Ivec(sigma), z[jz], y[jy])
+
+    dIdydz_func = [[[None for _ in range(3)] for _ in range(3)] for _ in range(3)]
+    vars = [y1,y2,y3,x1,x2,x3,z1,z2,z3]
+
+    if os.path.exists("generated_derivatives.py") == False:
+
+        # create derivatives
+        # actually currently this code is kind of useless
+
+        outfile = "generated_derivatives.py"
+        with open(outfile, "w") as f:
+            f.write("import numpy as np\n")
+            f.write("import math\n")
+            f.write("from numba import njit\n\n")
+
+            for sigma in range(3):
+                for jy in range(3):
+                    for jz in range(3):
+                        dIdydz_func[sigma][jy][jz] = lambdify(vars, dIdydz[sigma][jy][jz], 'numpy')
+
+                        code = pycode(dIdydz[sigma][jy][jz])
+                        fname = f"dIdydz_{sigma}_{jy}_{jz}"
+                        f.write(f"@njit\n")
+                        f.write(f"def {fname}(y1,y2,y3,x1,x2,x3,z1,z2,z3):\n")
+                        f.write(f"  return {code}\n\n")
+
 def Ivec(sigma):
     y1,y2,y3,x1,x2,x3,z1,z2,z3 = symbols('y1 y2 y3 x1 x2 x3 z1 z2 z3')
     x = Matrix([x1, x2, x3])
@@ -167,44 +205,6 @@ def I_a(ring1, y, z, x, l, t, s):
         return dIdydz_2_2_2(y1,y2,y3,x1,x2,x3,z1,z2,z3) * w
 
 def main():
-
-    y1,y2,y3,x1,x2,x3,z1,z2,z3 = symbols('y1 y2 y3 x1 x2 x3 z1 z2 z3')
-    x = Matrix([x1, x2, x3])
-    y = Matrix([y1, y2, y3])
-    z = Matrix([z1, z2, z3])
-
-    dIdydz = [[[None for _ in range(3)] for _ in range(3)] for _ in range(3)]
-
-    for sigma in range(3):
-        for jy in range(3):
-            for jz in range(3):
-                dIdydz[sigma][jy][jz] = diff(Ivec(sigma), z[jz], y[jy])
-
-    dIdydz_func = [[[None for _ in range(3)] for _ in range(3)] for _ in range(3)]
-    vars = [y1,y2,y3,x1,x2,x3,z1,z2,z3]
-
-    if os.path.exists("generated_derivatives.py") == False:
-
-        # create derivatives
-        # actually currently this code is kind of useless
-
-        outfile = "generated_derivatives.py"
-        with open(outfile, "w") as f:
-            f.write("import numpy as np\n")
-            f.write("import math\n")
-            f.write("from numba import njit\n\n")
-
-            for sigma in range(3):
-                for jy in range(3):
-                    for jz in range(3):
-                        dIdydz_func[sigma][jy][jz] = lambdify(vars, dIdydz[sigma][jy][jz], 'numpy')
-
-                        code = pycode(dIdydz[sigma][jy][jz])
-                        fname = f"dIdydz_{sigma}_{jy}_{jz}"
-                        f.write(f"@njit\n")
-                        f.write(f"def {fname}(y1,y2,y3,x1,x2,x3,z1,z2,z3):\n")
-                        f.write(f"  return {code}\n\n")
-
     knots = ["smalltk", "smallntk"]
 
     for idx, x in enumerate(knots):

@@ -39,8 +39,8 @@ def compute_trivalent_feynman_diagram(tri_propagator, ab_propagator, samples):
                                 if k>l:
                                     for m in range(0, N):
                                         if l>m:
-                                            feynman_data[idy][0] += ab_propagator[idy][i, j]*tri_propagator[idy][k, l, m]
-                                            feynman_data[idy][1] += ab_propagator[idy][i, k]*tri_propagator[idy][j, l, m]
+                                            feynman_data[idy][0] += ab_propagator[idy][i, j]*tri_propagator[idy, k, l, m]
+                                            feynman_data[idy][1] += ab_propagator[idy][i, k]*tri_propagator[idy, j, l, m]
 
     return feynman_data
 

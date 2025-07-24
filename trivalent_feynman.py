@@ -208,7 +208,7 @@ def main():
     knots = ["smalltk", "smallntk"]
 
     for idx, x in enumerate(knots):
-        set_num_threads(50)
+        set_num_threads(20)
         tri = []
         curves = load_curve(x, 152) # this is quite slow
         print("Manifold loaded")

@@ -16,7 +16,7 @@ def load_propagator(knot_type, Nbeads):
     ab_propagator = ab_propagator.reshape(-1, Nbeads, Nbeads)
 
     fname = f"3DSignedTri_small{knot_type}.npz"
-    tri_propagator = np.load(fname) # has kept structure
+    tri_propagator = np.load(fname)["tri_array"] # has kept structure
 
     return ab_propagator, tri_propagator
 

@@ -21,7 +21,7 @@ def load_propagator(knot_type, Nbeads):
     return ab_propagator, tri_propagator
 
 @njit(parallel = True)
-def compute_trivalent_feynman_diagram(tri_propagator, ab_propagator, samples):
+def compute_trivalent_feynman_diagram(ab_propagator, tri_propagator, samples):
     '''
     Calculate mixed Feynman diagrams (3rd order)
     '''

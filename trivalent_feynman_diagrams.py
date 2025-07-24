@@ -46,13 +46,13 @@ def compute_trivalent_feynman_diagram(tri_propagator, ab_propagator, samples):
 
 def main():
     knots = ["smallntk", "smalltk"]
-    set_num_threads(50)
+    set_num_threads(40)
     for x in knots:
-        propagators = load_propagator(x, 152) # this is quite slow
+        ab_propagator, tri_propagator = load_propagator(x, 152) # this is quite slow
         print("Gauge propagator loaded")
         print("Calculating possible feynman diagrams...")
         start_time = time.time()
-        tri2 = compute_trivalent_feynman_diagram(propagators, len(propagators))
+        tri2 = compute_trivalent_feynman_diagram(ab_propagator, tri_propagator, len(ab_propagator))
         print(time.time()-start_time)
         np.savetxt(f'samples/feynman_diagram_{x}_t11.csv', tri2[:,0])
         np.savetxt(f'samples/feynman_diagram_{x}_t12.csv', tri2[:,1])

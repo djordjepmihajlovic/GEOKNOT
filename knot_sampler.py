@@ -75,7 +75,7 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
                 print(f"writhe: {proposed_writhe}, range: {writhe_ranges[i]}")
                 print(f"entanglement: {proposed_entang}, range: {entang_ranges[j]}")
 
-                if topo == False: # ensure topology is not 0_1
+                if topo == False: # ensure topology is NOT 0_1
                     current_writhe = proposed_writhe
                     current_entang = proposed_entang
                     if min(writhe_ranges[i])<=current_writhe<=max(writhe_ranges[i]):

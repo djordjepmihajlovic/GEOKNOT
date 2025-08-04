@@ -53,7 +53,7 @@ def compute_feynman_diagram(ab_propagator, samples):
     return feynman_data_1, feynman_data_2, feynman_data_3
 
 def main():
-    knots = ["smallntk", "smalltk"]
+    knots = ["smallntk_2", "smalltk_2"]
     set_num_threads(50)
     for x in knots:
         propagators = load_propagator(x, 152) # this is quite slow

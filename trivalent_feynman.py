@@ -205,7 +205,7 @@ def I_a(ring1, y, z, x, l, t, s):
         return dIdydz_2_2_2(y1,y2,y3,x1,x2,x3,z1,z2,z3) * w
 
 def main():
-    knots = ["smalltk", "smallntk"]
+    knots = ["smalltk_2", "smallntk_2"]
 
     for idx, x in enumerate(knots):
         set_num_threads(20)

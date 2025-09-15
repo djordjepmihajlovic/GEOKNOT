@@ -2,10 +2,15 @@ import os
 import numpy as np
 from numba import prange, njit, set_num_threads
 from generated_derivatives import *
-from sympy import symbols, sqrt, Matrix, diff, lambdify, pycode
+from sympy import symbols, sqrt, Matrix, diff, lambdify, pycode, pi
 
 '''
-Automatic differential version
+Automatic differential version,
+Issues:
+if a and b are anti parallel (|a||b| + a\dot b) will cause probs.
+need to deal with pairwise collisions that make |a| or |b| small.
+Central difference tangent vectors are not well implemented for polygonal knot.
+Adjacency is when we have blow ups.
 '''
 
 def generate_derivatives():
@@ -61,7 +66,7 @@ def Ivec(sigma):
 
     S = (na+nb-nab)/((na*nb)+dot_ab)
 
-    return np.pi*2*S*(((a[sigma])/na) + ((b[sigma])/nb))
+    return pi*2*S*(((a[sigma])/na) + ((b[sigma])/nb))
 
 # ## dIdydz_func[sigma][lambda][tau] -> single number
 
@@ -137,6 +142,8 @@ def I_a(ring1, y, z, x, l, t, s):
     dx = ring1[(x+1)%ring1.shape[0]] - ring1[(x-1)%ring1.shape[0]] # dx
     dy = ring1[(y+1)%ring1.shape[0]] - ring1[(y-1)%ring1.shape[0]] # dy
     dz = ring1[(z+1)%ring1.shape[0]] - ring1[(z-1)%ring1.shape[0]] # dz
+
+    # actually need
 
     x1, x2, x3 = ring1[x]
     y1, y2, y3 = ring1[y]

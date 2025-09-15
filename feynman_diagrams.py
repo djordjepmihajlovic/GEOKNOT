@@ -20,6 +20,7 @@ def load_propagator(knot_type, Nbeads):
 def compute_feynman_diagram(ab_propagator, samples):
     '''
     Calculate the non-trivalent 'abelian propagator' Feynman diagrams
+    Note to self - this sucks - maybe we can dynamically program this? 
     '''
 
     feynman_data_1 = np.zeros((samples, 1)) # [[0, 1]]

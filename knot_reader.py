@@ -2,9 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from knot_init import *
 from defunct.knot_evolution import lattice_writhe_Klenin
+from crossing_matrix import *
 from quantum_knot_invs import *
 
-# knot = np.loadtxt('/Users/s1910360/Desktop/ntk/K_9_7_2821.csv', delimiter=',', dtype=np.float64)
+knot = np.loadtxt('/Users/s1910360/Desktop/ntk/K_9_7_2821.csv', delimiter=',', dtype=np.float64)
 # knot = np.loadtxt('examples/config_0_1.csv', delimiter=',', dtype=np.float64)
 
 def read_array(knot):
@@ -31,9 +32,9 @@ def read_coord(knot):
 # Check topology
 # proposed_state = {tuple(coord[1:]): coord[0] for coord in read_coord(knot)}
 # topo = Q_invariant(proposed_state, 'Uq(sl2)').alexander_polynomial_hash('0_1', joggle=False)
-
-# im = lattice_writhe_Klenin(read_coord(knot))
-# print(np.sum(im))
-# plt.imshow(im)
-# plt.colorbar()
-# plot_3d_line(read_coord(knot))
+coords = read_coord(knot)
+print(knot[:,1:])
+cross_mat, len_cross = compute_crossing_matrix(knot=knot[:,1:], projection=np.array([0.3, 0.4, 0.7], dtype=np.float32), dim=len(knot))
+plt.imshow(cross_mat)
+plt.show()
+plot_3d_line(coords)

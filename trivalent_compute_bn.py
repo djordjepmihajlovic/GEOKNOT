@@ -36,7 +36,7 @@ def compute_trivalent_feynman_diagram(ring1):
 def I(ring1, s, t, u, L):
     n = len(ring1)
     
-    eps = 1e-10
+    eps = 1e-5 # angle dependence (?)
 
     sm1 = (s - 1) % n
     tm1 = (t - 1) % n

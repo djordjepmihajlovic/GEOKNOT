@@ -59,7 +59,7 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
             print(f"Sampling writhe {writhe_ranges[i]} and entanglement {entang_ranges[j]}")
             # check if file already exists
             
-            if os.path.exists(f'samples/ntk_2/ntk_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv'):
+            if os.path.exists(f'samples/tk_3/tk_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv'):
                 print(f"File already exists for writhe {writhe_ranges[i]} and entanglement {entang_ranges[j]}, skipping...")
                 continue
 
@@ -81,7 +81,7 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
                 print(f"writhe: {proposed_writhe}, range: {writhe_ranges[i]}")
                 print(f"entanglement: {proposed_entang}, range: {entang_ranges[j]}")
 
-                if topo == False: # ensure topology is NOT 0_1
+                if topo == True: # ensure topology is 0_1 (should write a script that automates things)
                     current_writhe = proposed_writhe
                     current_entang = proposed_entang
                     if min(writhe_ranges[i])<=current_writhe<=max(writhe_ranges[i]):
@@ -122,7 +122,7 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
                             w = [wx[0] for wx in elements]
                             new_coord_w = [(w[idx],) + coord for idx, coord in enumerate(new_coord)]
 
-                            np.savetxt(f'samples/ntk_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv', new_coord_w, delimiter=",", fmt='%.5f')
+                            np.savetxt(f'samples/tk_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv', new_coord_w, delimiter=",", fmt='%.5f')
                             sampled_states.append([partition, int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2)])
                             instance_per_range.append([int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2), instance])
             
@@ -199,7 +199,7 @@ def main():
     #     for j in range(sub_samples):
 
             print(f'Checking: {j[0]},{j[1]},{j[2]}')
-            file = np.loadtxt(f'samples/ntk_{j[0]}_{j[1]}_{j[2]}.csv', delimiter=',', dtype=int)
+            file = np.loadtxt(f'samples/tk_{j[0]}_{j[1]}_{j[2]}.csv', delimiter=',', dtype=int)
             load = read_array(file)
             array = load.copy() # this will load an integer rounded version
             no_points = len(np.argwhere(array)>0)
@@ -268,14 +268,14 @@ def main():
     plt.xlabel('Writhe')
     plt.ylabel('Entanglement')
     plt.title(f'Writhe vs Entanglement Heatmap for non-trivial knots')
-    plt.savefig(f'samples/writhe_entang_heatmap_ntk.png')
+    plt.savefig(f'samples/writhe_entang_heatmap_tk.png')
     plt.clf()
 
     plt.hist(writhe_dist, bins=100, density=True, alpha=0.5, label='Writhe Distribution')
     plt.xlabel('Writhe')
     plt.ylabel('Density')
     plt.title(f'Writhe Distribution for non-trivial knots')
-    plt.savefig(f'samples/writhe_dist_samples_ntk.png')
+    plt.savefig(f'samples/writhe_dist_samples_tk.png')
     plt.clf()
     
     plt.hist(entang_dist, bins=100, density=True, alpha=0.5, label='Entanglement Distribution')

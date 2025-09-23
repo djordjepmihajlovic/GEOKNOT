@@ -6,6 +6,7 @@ from tensor_algebra import *
 import kymoknot 
 from kymoknot.searchtype import SearchType
 from kymoknot.knotentry import KnotEntry
+from knot_init import *
 
 '''
 This module calculates quantum invariants of a knot to determine knot type (not preserved in pivot algorithm).
@@ -21,12 +22,90 @@ Method:
         
 '''
 
+@njit()
+def neighbours(array, point):
+    '''
+    Takes in array and specified point, outputs an array of neighbours of point and associated neighbour value.
+    '''
+
+    neighbour = np.empty((26, 4))
+
+    idx = 0
+    for dx in [-1, 0, 1]:
+        for dy in [-1, 0, 1]:
+            for dz in [-1, 0, 1]:
+
+                if dx == 0 and dy == 0 and dz == 0:
+                    continue
+
+                nx_1, ny_1, nz_1 = point[0].item() + dx, point[1].item() + dy, point[2].item() + dz
+
+                if 0<= nx_1 <array.shape[0] and 0<= ny_1 <array.shape[1] and 0<= nz_1 <array.shape[2]: 
+                    neighbour[idx] = [nx_1, ny_1, nz_1, array[nx_1][ny_1][nz_1]]
+                    idx += 1
+
+    return neighbour
+
+def orient(array):
+    '''
+    For fixing orientation: make copy of array, assign 1 to some point and N to one of its neighbours. Now impose that every point (excluding)
+    1 and N must have a neighbour with +1 value and -1 value of current value. 
+    Save both oriented and unoriented structure, use unoriented structure (just 1's) for some calcs.
+    '''
+
+    indicies = np.argwhere(array == 1)
+    oriented_structure = array.copy()
+    p1 = indicies[0]
+
+    vec_1 = np.empty((2, 3))
+
+    neighbourhood = neighbours(array, p1)
+    idx = 0
+
+    for i in neighbourhood:
+        if i[3] == 1:
+            vec_1[idx] = [i[0], i[1], i[2]]
+            idx += 1
+
+    vec_1 = vec_1.astype(int)
+
+    oriented_structure[vec_1[0][0]][vec_1[0][1]][vec_1[0][2]] = len(indicies)
+    oriented_structure[vec_1[1][0]][vec_1[1][1]][vec_1[1][2]] = 2
+
+    neighbourhood = neighbours(oriented_structure, vec_1[1])
+
+    update_number = 3
+
+    neighbourhood = neighbourhood.astype(int)
+
+    for i in neighbourhood:
+        if i[3] == 1 and (i[0] != p1[0] or i[1] != p1[1] or i[2] != p1[2]):
+            oriented_structure[i[0]][i[1]][i[2]] = update_number
+            prev_number = update_number
+            update_number += 1
+        
+    while len(np.argwhere(oriented_structure ==1)) > 1:
+
+        index = np.argwhere(oriented_structure == prev_number)
+
+        for ind in index:
+            neighbourhood = neighbours(oriented_structure, ind)
+            neighbourhood = neighbourhood.astype(int)
+            for i in neighbourhood:
+                if i[3] == 1:
+                    oriented_structure[i[0]][i[1]][i[2]] = update_number
+                    prev_number = update_number
+                    update_number += 1
+
+    return oriented_structure
+
 def points_on_axis(array, axis):
     '''
     Projects points onto a plane defined by axis as local 2D coordinate system aligned with plane.
     '''
 
     indicies = np.argwhere(array>0)
+
     axis = axis/np.linalg.norm(axis)
 
     arbitrary_vector = np.array([1, 0, 0]) if not np.allclose(axis, [1, 0, 0]) else np.array([0, 1, 0])
@@ -58,6 +137,10 @@ def points_on_axis(array, axis):
     [float(x) for x in row[0]] + row[1].tolist() + [row[2]]
     for row in projected_points
     ]
+
+    ##################### ISSUE HERE BECAUSE I UPDATED HOW KNOT DATA WAS PARSED ###########################
+    ##################### Need to order knots according to their value ####################################
+    print(np.array(projected_points, dtype=np.float64))
 
     return np.array(projected_points, dtype=np.float64)
 
@@ -232,9 +315,9 @@ class Q_invariant:
         '''
         self.array = array
         self.q_group = q_group
-        # self.axis = np.array([np.pi, -np.e/2, np.sqrt(2)/2])
-        # self.projection = points_on_axis(self.array, self.axis)
-        # scan(self.projection)
+        self.axis = np.array([np.pi, -np.e/2, np.sqrt(2)/2])
+        self.projection = points_on_axis(self.array, self.axis)
+        scan(self.projection)
 
 
     def build_equation(self):
@@ -251,7 +334,7 @@ class Q_invariant:
 
         equation = sorted(equation, key = lambda x: x[0][1]) # sort by y values 
 
-        ## debugging plot
+        # ## debugging plot
 
         q = symbols('q')
         e_1 = symbols('e_1') ## e1: (e_{1})
@@ -503,3 +586,12 @@ class Q_invariant:
         print(p)
         return l
     
+discretization = 100
+knot_type = '3_1'
+state_space = np.zeros((discretization, discretization, discretization))
+knot = Knot(knot_type, state_space)
+knot = knot.initialize()
+knot = orient(knot)
+
+Q = Q_invariant(knot, 'Uq(sl3)')
+Q.build_equation()

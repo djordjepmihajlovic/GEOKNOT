@@ -342,4 +342,6 @@ def check_RMIII():
 ## Example scenario: trefoil ##
 ###############################
 
-# check_RMI()
+check_RMI()
+check_RMII()
+check_RMIII()

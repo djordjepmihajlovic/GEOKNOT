@@ -315,9 +315,9 @@ class Q_invariant:
         '''
         self.array = array
         self.q_group = q_group
-        self.axis = np.array([np.pi, -np.e/2, np.sqrt(2)/2])
-        self.projection = points_on_axis(self.array, self.axis)
-        scan(self.projection)
+        # self.axis = np.array([np.pi, -np.e/2, np.sqrt(2)/2])
+        # self.projection = points_on_axis(self.array, self.axis)
+        # scan(self.projection)
 
 
     def build_equation(self):

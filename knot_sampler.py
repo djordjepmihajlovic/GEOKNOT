@@ -2,13 +2,13 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 from knot_evolution_hash import *
 from knot_reader import *
-from quantum_knot_invs import *
 import time
 from multiprocessing import Pool
 import os
 import math
 import numpy as np
 import csv
+from quantum_knot_invs import Q_invariant
 
 '''
 Its always useful to write down ideas:)

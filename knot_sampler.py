@@ -59,7 +59,7 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
             print(f"Sampling writhe {writhe_ranges[i]} and entanglement {entang_ranges[j]}")
             # check if file already exists
             
-            if os.path.exists(f'samples/tk_4/tk_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv'):
+            if os.path.exists(f'samples/tk_5/tk_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}_2.csv'):
                 print(f"File already exists for writhe {writhe_ranges[i]} and entanglement {entang_ranges[j]}, skipping...")
                 continue
 
@@ -120,7 +120,7 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
                             w = [wx[0] for wx in elements]
                             new_coord_w = [(w[idx],) + coord for idx, coord in enumerate(new_coord)]
 
-                            np.savetxt(f'samples/tk_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv', new_coord_w, delimiter=",", fmt='%.5f')
+                            np.savetxt(f'samples/tk_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}_2.csv', new_coord_w, delimiter=",", fmt='%.5f')
                             sampled_states.append([partition, int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2)])
                             instance_per_range.append([int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2), instance])
             

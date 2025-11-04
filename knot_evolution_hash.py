@@ -347,10 +347,52 @@ def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshol
                     score += 1
     return score
 
+@njit()
+def average_curvature(coords):
+    '''
+    Computes the average curvature of a 3D curve defined by coords.
+    '''
+    coords = np.array(coords)
+    n = len(coords)
+
+    # Compute first and second derivatives 
+    first_derivative = np.gradient(coords, axis=0)
+    second_derivative = np.gradient(first_derivative, axis=0)
+
+    # Compute curvature at each point
+    curvature = []
+    for i in range(n):
+        cross_product = np.cross(first_derivative[i], second_derivative[i])
+        numerator = np.linalg.norm(cross_product)
+        denominator = np.linalg.norm(first_derivative[i]) ** 3
+        if denominator != 0:
+            curvature.append(numerator / denominator)
+        else:
+            curvature.append(0)
+    return np.mean(curvature)
+
+@njit()
 def radius_of_gyration(array):
     indicies = np.argwhere(array > 0)
     center_of_mass = np.mean(indicies, axis=0)
     return np.sqrt(np.mean(np.sum((indicies - center_of_mass)**2, axis=1)))
+
+@njit()
+def gyration_tensor_and_eigenvalues(coords):
+    '''
+    Computes the gyration tensor and its eigenvalues.
+    '''
+
+    center_of_mass = np.mean(coords, axis=0)
+    
+    shifted_coords = coords - center_of_mass
+    gyration_tensor = np.zeros((3, 3))
+    for coord in shifted_coords:
+        gyration_tensor += np.outer(coord, coord)
+    gyration_tensor /= len(coords)
+    eigenvalues = np.linalg.eigvalsh(gyration_tensor)
+    
+    return gyration_tensor, eigenvalues
 
 @njit()
 def positional_difference(array, update_array):
@@ -798,7 +840,8 @@ def BFACF(array_dict, timesteps, aimed_range):
     BFACF with chosen sampling methods
     '''
     # Gradient descent towards entanglement first.
-
+    # Need to generalize this.
+    
     wr_data = []
     ent_data = []
     count_data = []
@@ -837,6 +880,8 @@ def BFACF(array_dict, timesteps, aimed_range):
     old_entanglement_energy = long_range_entanglement(init_array)
     
     old_energy = alpha * old_entanglement_energy + (1-alpha) * old_writhe_energy
+
+    # old_curve_energy = average_curvature(init2array)
 
     phase = 1
 
@@ -1179,13 +1224,6 @@ def pivot(array_dict, timesteps, knot, aimed_range):
         if status < -2: 
             continue
         else:
-            
-            ##### Function for Muhammad to implement #####
-            # divide timesteps into 10.
-            # check topology using Q_invariant.
-            # if topology not consistent within chunk reverse to previous chunk.
-            # do an analysis on optimal amount of checks dependant on knot type.
-            # continue...
             
             max_x = max(p[0] for p in update_dict) + 1
             max_y = max(p[1] for p in update_dict) + 1

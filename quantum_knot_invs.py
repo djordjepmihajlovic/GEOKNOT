@@ -586,12 +586,12 @@ class Q_invariant:
         print(p)
         return l
     
-discretization = 100
-knot_type = '3_1'
-state_space = np.zeros((discretization, discretization, discretization))
-knot = Knot(knot_type, state_space)
-knot = knot.initialize()
-knot = orient(knot)
+# discretization = 100
+# knot_type = '0_1'
+# state_space = np.zeros((discretization, discretization, discretization))
+# knot = Knot(knot_type, state_space)
+# knot = knot.initialize()
+# knot = orient(knot)
 
-Q = Q_invariant(knot, 'Uq(sl3)')
-Q.build_equation()
+# Q = Q_invariant(knot, 'Uq(sl3)')
+# Q.build_equation()

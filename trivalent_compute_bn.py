@@ -10,33 +10,39 @@ def tot_length(ring1):
     L = 0
     n = len(ring1)
     for i in range(0, n):
-        L+= np.linalg.norm(ring1[(i+1)%n] - ring1[(i-1)%n])
+        L+= np.linalg.norm(ring1[(i+1)%n] - ring1[(i)%n])
     
     return L
 
 
-@njit(parallel=True)
+@njit(parallel = True)
 def compute_trivalent_feynman_diagram(ring1):
     n1 = ring1.shape[0]
 
-    matrix = np.zeros((n1, n1, n1))
+    # matrix = np.zeros((n1, n1, n1))
+
     val = 0.0
     L = tot_length(ring1)
 
     for s in range(n1):
+        p = int(n1/10)
+        if s%p == 0: 
+            print(s)
+            print(val)
         for t in range(s):
             for u in prange(t):
-                matrix[s, t, u] += I(ring1, s, t, u, L)
+                # matrix[s, t, u] += I(ring1, s, t, u, L)
+                val += I(ring1, s, t, u, L)
     
-    val = np.sum(matrix)
+    # val = np.sum(matrix)
                
-    return matrix, val
+    return val
 
 @njit()
 def I(ring1, s, t, u, L):
     n = len(ring1)
     
-    eps = 1e-10 # angle dependence (?)
+    eps = 1e-4 # angle dependence 1e-10
 
     sm1 = (s - 1) % n
     tm1 = (t - 1) % n
@@ -52,6 +58,9 @@ def I(ring1, s, t, u, L):
     ds = np.linalg.norm(dxs)/L
     dt = np.linalg.norm(dxt)/L
     du = np.linalg.norm(dxu)/L
+
+    if ds<eps or dt<eps or du<eps:
+        return 0.0
 
     dxs *= (0.5/ds)
     dxt *= (0.5/dt)

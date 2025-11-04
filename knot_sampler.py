@@ -38,7 +38,7 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
     # 4.) Implement reduction in writhe or entanglement if value is above the aimed range.
     # 5.) writhe_range and entang_range should be passed as arguments to the sampling function.
 
-    writhe_range = (0, 35)
+    writhe_range = (0, -35)
     entang_range = (750, 2750) # maybe make convergence slightly faster
 
     writhe_edges = np.linspace(*writhe_range, writhe_bins + 1)
@@ -59,7 +59,7 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
             print(f"Sampling writhe {writhe_ranges[i]} and entanglement {entang_ranges[j]}")
             # check if file already exists
             
-            if os.path.exists(f'samples/tk_3/tk_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv'):
+            if os.path.exists(f'samples/tk_4/tk_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv'):
                 print(f"File already exists for writhe {writhe_ranges[i]} and entanglement {entang_ranges[j]}, skipping...")
                 continue
 
@@ -74,8 +74,6 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
 
                 proposed_state = pivot(current_state, timesteps=pivot_lag, knot=knot_type, aimed_range=(writhe_ranges[i], entang_ranges[j]))
                 proposed_state, proposed_writhe, proposed_entang = BFACF(proposed_state, timesteps=BFACF_lag, aimed_range=(writhe_ranges[i], entang_ranges[j]))
-                # proposed_state = pivot(proposed_state, timesteps=pivot_lag, knot=knot_type, aimed_range=(writhe_ranges[i], entang_ranges[j]))
-                # proposed_state, proposed_writhe, proposed_entang = BFACF(proposed_state, timesteps=BFACF_lag, aimed_range=(writhe_ranges[i], entang_ranges[j]))
 
                 topo = Q_invariant(proposed_state, 'Uq(sl2)').alexander_polynomial_hash(knot_type) 
                 print(f"writhe: {proposed_writhe}, range: {writhe_ranges[i]}")
@@ -194,10 +192,6 @@ def main():
     for i in sampled_results:
         for j in i:
 
-
-    # for i in range(samples):
-    #     for j in range(sub_samples):
-
             print(f'Checking: {j[0]},{j[1]},{j[2]}')
             file = np.loadtxt(f'samples/tk_{j[0]}_{j[1]}_{j[2]}.csv', delimiter=',', dtype=int)
             load = read_array(file)
@@ -312,3 +306,6 @@ if __name__ == "__main__":
 ## certain types after some time.
 ## Analysis of times taken to sample each would be good
 ## Also (24/06) lets make a dataset of unknot versus knot
+
+
+# Want to transform this code such that we can bias any chosen geometric variable

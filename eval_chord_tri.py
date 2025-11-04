@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from chord_compute import *
 from trivalent_compute_bn import *
 from quantum_knot_invs import *
+from homotopy import *
 
 '''
 This code is to ensure the calculations act as expected on some ideal, smooth embeddings of knots.
@@ -248,69 +249,90 @@ def arc(angle, radius, n=100, return_smoothed=True):
     return poly, circle
 
 
-def homotopy(config1, config2, t):
-    config = config1 * t + config2 * (1 - t)
+# angle  = np.deg2rad(20)  
+# radius = 0.25
+# kinked, circle = arc(angle, radius, n=50)
 
-    return config
+# unknot = homotopy(config1=circle, config2=kinked, t=0.1)
 
-angle  = np.deg2rad(2.5)   # 60° corner
-radius = 0.25
-kinked, circle = arc(angle, radius, n=50)
+# plot(unknot)
 
-unknot = homotopy(config1=circle, config2=kinked, t=0.001)
+time = np.linspace(0, 0.1, 10000)
 
-plot(unknot)
+angles = np.arange(100, 5, -5)
+print(angles)
+plots = [[], []]
+sample_data = [[], [], [], []]
 
-time = np.linspace(0, 0.001, 100)
+ns = [13, 11]
 
-angles = [90, 60, 30, 15, 5, 2.5]
-sample_data = [[], [], [], [], [], []]
+knots = load('smallntk')
 
-for idx, angle in enumerate(angles):
+Bs = [1]
+Cs = [1]
+plots = []
 
-    for ti in time:
-        ### Angle tests ###
-        radius = 0.25
-        kinked, circle = arc(np.deg2rad(angle), radius, n=50)
+for C in Cs:
+    for B in Bs:
+        data = []
 
-        knot = homotopy(config1=circle, config2=kinked, t=ti)
+        for xi in range(0,10):
 
-        factor_x = 1/(8*np.pi**2)
-        factor_y = 1/(16*np.pi**2)
-        _, Y2 = compute_trivalent_feynman_diagram(knot)
-        #Y2 = ordered_triple_integral_segmented(knot, settings=cfg)
-        # Y2 = polygonal_triple_integral(knot)
+            tknot = homotope_smooth(knots[xi], interpolate(knots[xi], 3), smooth(knots[xi], 3), 3, B, C)
+            # must be even numbers for smoothing reasons// shared vertices
 
-        writhe = compute_chord(knot, knot)
-        print(f"writhe = {(1/(4*np.pi))*np.sum(writhe)}")
-        X = 0
+            factor_x = 1/(8*np.pi**2)
+            factor_y = 1/(16*np.pi**2)
+            Y2 = compute_trivalent_feynman_diagram(tknot)
+            Y2alt = compute_trivalent_feynman_diagram(knots[xi])
 
-        # for i in range(0, N):
-        #     for j in range(0, N):
-        #         if i<j:
-        #             for k in range(0, N):
-        #                 if j<k:
-        #                     for l in range(0, N):
-        #                         if k<l:
-        #                             X += writhe[i][k] * writhe[j][l]
+            writhe = compute_chord(knots[xi], knots[xi])
+            plt.imshow(writhe)
+            plt.show()
+            print(f"writhe = {(1/(4*np.pi))*np.sum(writhe)}")
+            X = 0
 
-        # for an unknot we have AC polynomial = 1
-        # so, the invariant w_2 (Bar Natan) of an unknot = 1/24 + 0 = 0.0416
+            for i in range(0, N):
+                for j in range(0, N):
+                    if i<j:
+                        for k in range(0, N):
+                            if j<k:
+                                for l in range(0, N):
+                                    if k<l:
+                                        X += writhe[i][k] * writhe[j][l]
 
-        # for a trefoil we have AC polynomial = z^{2} + 1
-        # so, the invariant w_2 (Bar Natan) of a trefoil = 1/24 + 1 = 1.0416
-        # for some reason guangadnini say 1/12? -> this is to do w the gauge group of the theory = 0.083
+            X = factor_x * X
+            Y2 = factor_y * Y2
+            Y2alt = factor_y * Y2
 
-        X = factor_x * X
-        Y2 = factor_y * Y2
-        w_2 = X + Y2
-        sample_data[idx].append(w_2)
-        print(X, Y2)
-        print(w_2)
+            w_2 = X + Y2
+            print(f"smoothed: {w_2}")
+            w_2alt = X + Y2alt
+            print(f"original: {w_2alt}")
 
-for i in range(0, len(angles)):
-    plt.scatter(time, sample_data[i], marker='x', label=angles[i])
-    plt.plot(time, sample_data[i])
-plt.hlines(y= -(1/12), xmin=min(time), xmax=max(time))
-plt.legend()
-plt.show()
+            true_val = -(1/2)
+
+            convergence = abs(Y2-true_val)
+            convergencealt = abs(Y2alt-true_val)
+
+            # print(convergencealt-convergence)
+            data.append(convergencealt-convergence)
+
+        plots.append(data)
+
+for x in range(0, len(plots)):
+    plt.hist(plots[x])
+
+# for i in range(0, len(angles)):
+#     plt.scatter(time, sample_data[i], marker='x', label=angles[i])
+#     plt.plot(time, sample_data[i])
+# plt.hlines(y= -(1/12), xmin=min(time), xmax=max(time))
+# plt.legend()
+# plt.show()
+
+# for x in range(0, len(plots)):
+#     plt.plot(angles, plots[x], label=f"Samples: {ns[x]}")
+# plt.ylabel('Smoothing')
+# plt.xlabel('Kink angle')
+# plt.legend()
+# plt.show()

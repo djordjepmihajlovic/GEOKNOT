@@ -38,8 +38,9 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
     # 4.) Implement reduction in writhe or entanglement if value is above the aimed range.
     # 5.) writhe_range and entang_range should be passed as arguments to the sampling function.
 
-    writhe_range = (0, -35)
-    entang_range = (750, 2750) # maybe make convergence slightly faster
+    writhe_range = (0, 25)
+    # entang_range = (750, 2750) # maybe make convergence slightly faster
+    entang_range = (0.2, 0.9)
 
     writhe_edges = np.linspace(*writhe_range, writhe_bins + 1)
     entang_edges = np.linspace(*entang_range, entang_bins + 1)
@@ -221,7 +222,8 @@ def main():
                 if val != 0:
                     entang_dict[iter.multi_index] = val.item()
 
-            entang = long_range_entanglement(entang_dict)
+            # entang = long_range_entanglement(entang_dict)
+            entang = average_curvature(entang_dict)
 
             if entang > max_entang:
                 max_entang = entang

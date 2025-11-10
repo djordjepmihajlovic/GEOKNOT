@@ -348,11 +348,11 @@ def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshol
     return score
 
 @njit()
-def average_curvature(coords):
+def average_curvature(array_dict):
     '''
     Computes the average curvature of a 3D curve defined by coords.
     '''
-    coords = np.array(coords)
+    coords = list(array_dict.keys())
     n = len(coords)
 
     # Compute first and second derivatives 
@@ -877,7 +877,8 @@ def BFACF(array_dict, timesteps, aimed_range):
                                             projections_11m1=projections_11m1,
                                             projections_1m1m1=projections_1m1m1)
     
-    old_entanglement_energy = long_range_entanglement(init_array)
+    # old_entanglement_energy = long_range_entanglement(init_array)
+    old_entanglement_energy = average_curvature(init_array)
     
     old_energy = alpha * old_entanglement_energy + (1-alpha) * old_writhe_energy
 
@@ -943,7 +944,8 @@ def BFACF(array_dict, timesteps, aimed_range):
                                                     projections_11m1=projections_11m1,
                                                     projections_1m1m1=projections_1m1m1)
             
-            new_entanglement_energy = long_range_entanglement(update_array)
+            # new_entanglement_energy = long_range_entanglement(update_array)
+            new_entanglement_energy = average_curvature(update_array)
 
             new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
             
@@ -1137,7 +1139,8 @@ def pivot(array_dict, timesteps, knot, aimed_range):
                                             projections_11m1=projections_11m1,
                                             projections_1m1m1=projections_1m1m1)
     
-    old_entanglement_energy = long_range_entanglement(init_array)
+    # old_entanglement_energy = long_range_entanglement(init_array)
+    old_entanglement_energy = average_curvature(init_array)
 
     phase = 1
     alpha = 1
@@ -1243,7 +1246,8 @@ def pivot(array_dict, timesteps, knot, aimed_range):
                                                     projections_11m1=projections_11m1,
                                                     projections_1m1m1=projections_1m1m1)
             
-            new_entanglement_energy = long_range_entanglement(update_dict)
+            # new_entanglement_energy = long_range_entanglement(update_dict)
+            new_entanglement_energy = average_curvature(update_dict)
             new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
             
             # if new_writhe_energy < target_wr:

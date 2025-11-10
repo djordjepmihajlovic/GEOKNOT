@@ -347,7 +347,7 @@ def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshol
                     score += 1
     return score
 
-@njit()
+
 def average_curvature(array_dict):
     '''
     Computes the average curvature of a 3D curve defined by coords.

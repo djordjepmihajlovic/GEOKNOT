@@ -130,10 +130,8 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
 
 def process_wang_landau(args):
 
-    i, oriented, knot_type, writhe_bins, rog_bins = args
-
-    sampled_states, instance_per_range = wang_landau_sampling(i, oriented, knot_type, writhe_bins, rog_bins)
-
+    i, oriented, knot_type, bins_1, bins_2 = args
+    sampled_states, instance_per_range = wang_landau_sampling(i, oriented, knot_type, bins_1, bins_2)
     return sampled_states, instance_per_range
 
 
@@ -163,10 +161,10 @@ def main():
 
     start_time = time.time()
 
-    writhe_bins = sub_samples
-    rog_bins = sub_samples
+    bins_1 = sub_samples
+    bins_2 = sub_samples
 
-    args_list = [(i, oriented, knot_type, writhe_bins, rog_bins) for i in range(samples)]
+    args_list = [(i, oriented, knot_type, bins_1, bins_2) for i in range(samples)]
 
     with Pool(processes=num_processes) as pool: 
         results = pool.map(process_wang_landau, args_list)  # Parallelize over samples
@@ -294,6 +292,10 @@ par.add_argument("-no", "--no_samples", type=int, default=10, help="Number of de
 par.add_argument("-sub", "--no_sub_samples", type=int, default=10, help="Number of sub-samples per process.")
 par.add_argument("-np", "--no_processes", type=int, default=os.cpu_count(), help="Number of cores to run code on.")
 
+par.add_argument("-met", "--metrics", type=list, default=['wr', 'ent'], help="Geometric state space metrics to explore. Possible metrics:" \
+"wr, ent, curv, tor, acn, pd, rgy")
+par.add_argument("-distr", "--state_space_distr", type=list, default=[(0, 35), (750, 2750)], help="End-to-end state space sample distribution.")
+
 args = par.parse_args()
 
 if __name__ == "__main__":
@@ -305,10 +307,9 @@ if __name__ == "__main__":
     sub_samples = args.no_sub_samples
 
     main()
+
 ## Depending on how quickly the code runs (16:04 23/06) I might want to alter the code s.t. it terminates the search for configurations of 
 ## certain types after some time.
 ## Analysis of times taken to sample each would be good
 ## Also (24/06) lets make a dataset of unknot versus knot
-
-
 # Want to transform this code such that we can bias any chosen geometric variable

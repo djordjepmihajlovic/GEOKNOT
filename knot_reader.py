@@ -1,8 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from knot_init import *
-from defunct.knot_evolution import lattice_writhe_Klenin
-from crossing_matrix import *
+from knot_evolution_hash import lattice_writhe_Klenin
 # from quantum_knot_invs import *
 
 # knot = np.loadtxt('/Users/s1910360/Desktop/ntk/K_9_7_2821.csv', delimiter=',', dtype=np.float64)

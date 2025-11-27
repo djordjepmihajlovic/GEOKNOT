@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 from knot_evolution_hash import *
 from quantum_knot_invs import *
 import time
-from defunct.knot_evolution import lattice_writhe_Klenin
+from knot_evolution_hash import lattice_writhe_Klenin
 
 def main():
     '''

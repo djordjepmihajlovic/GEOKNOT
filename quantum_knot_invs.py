@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from numba import njit, prange
 from sympy import symbols, simplify
-from tensor_algebra import *
 import kymoknot 
 from kymoknot.searchtype import SearchType
 from kymoknot.knotentry import KnotEntry
@@ -307,7 +306,6 @@ def crossing(projection, axis):
                             intersections.append(point + [wr])
     return intersections
         
-xxxxx
 
 class Q_invariant:
     def __init__(self, array, q_group):
@@ -316,182 +314,6 @@ class Q_invariant:
         '''
         self.array = array
         self.q_group = q_group
-        # self.axis = np.array([np.pi, -np.e/2, np.sqrt(2)/2])
-        # self.projection = points_on_axis(self.array, self.axis)
-        # scan(self.projection)
-
-
-    def build_equation(self):
-        '''
-        Build equation from splittings and crossings.
-        '''
-
-        tensors = scan(self.projection)
-        crossings = crossing(self.projection, self.axis)
-
-        equation = tensors
-        for i in crossings:
-            equation.append([i])
-
-        equation = sorted(equation, key = lambda x: x[0][1]) # sort by y values 
-
-        # ## debugging plot
-
-        q = symbols('q')
-        e_1 = symbols('e_1') ## e1: (e_{1})
-        e_2 = symbols('e_2')
-        de_1 = symbols('de_1') ## dual e1: (e^{1})
-        de_2 = symbols('de_2')
-        V = symbols('V')
-        dV = symbols('dV')
-
-        if self.q_group == 'Uq(sl2)':
-
-            R_table_VV = {
-                TensorProduct(e_1, e_1): q**(1/4)*TensorProduct(e_1, e_1),
-                TensorProduct(e_1, e_2): q**(-1/4)*TensorProduct(e_2, e_1),
-                TensorProduct(e_2, e_1): q**(-1/4)*TensorProduct(e_1, e_2) + (q**(1/4) - q**(-3/4))*TensorProduct(e_2, e_1),
-                TensorProduct(e_2, e_2): q**(1/4)*TensorProduct(e_2, e_2),
-            }
-
-            inv_R_table_VV = {
-                TensorProduct(e_1, e_1): q**(-1/4)*TensorProduct(e_1, e_1),
-                TensorProduct(e_1, e_2): q**(1/4)*TensorProduct(e_2, e_1) + (q**(-1/4) - q**(3/4))*TensorProduct(e_1, e_2),
-                TensorProduct(e_2, e_1): q**(1/4)*TensorProduct(e_1, e_2),
-                TensorProduct(e_2, e_2): q**(-1/4)*TensorProduct(e_2, e_2),
-            }
-
-            R_table_dVdV = {
-                TensorProduct(de_1, de_1): q**(-1/4)*TensorProduct(de_1, de_1),
-                TensorProduct(de_1, de_2): q**(1/4)*TensorProduct(de_2, de_1),
-                TensorProduct(de_2, de_1): q**(1/4)*TensorProduct(de_1, de_2) + (q**(-1/4) - q**(3/4))*TensorProduct(de_2, de_1),
-                TensorProduct(de_2, de_2): q**(-1/4)*TensorProduct(de_2, de_2),
-            }
-
-            inv_R_table_dVdV = {
-                TensorProduct(de_1, de_1): q**(1/4)*TensorProduct(de_1, de_1),
-                TensorProduct(de_1, de_2): q**(-1/4)*TensorProduct(de_2, de_1) + (q**(1/4) - q**(-3/4))*TensorProduct(de_1, de_2),
-                TensorProduct(de_2, de_1): q**(-1/4)*TensorProduct(de_1, de_2),
-                TensorProduct(de_2, de_2): q**(1/4)*TensorProduct(de_2, de_2),
-            }
-
-
-        evaluation_table = {
-            TensorProduct(dV, V): q**(-1/2)*TensorProduct(de_1, e_1) + q**(1/2)*TensorProduct(de_2, e_2),
-            TensorProduct(V, dV): TensorProduct(e_1, de_1) + TensorProduct(e_2, de_2),
-        }
-
-        coevaluation_table = {
-            TensorProduct(de_1, e_1): 1,
-            TensorProduct(de_1, e_2): 0,
-            TensorProduct(de_2, e_1): 0,
-            TensorProduct(de_2, e_2): 1,
-            
-            TensorProduct(e_1, de_1): q**(1/2),
-            TensorProduct(e_1, de_2): 0,
-            TensorProduct(e_2, de_1): 0,
-            TensorProduct(e_2, de_2): q**(-1/2),
-        }
-
-        basis_table = {
-            1.0: V,
-            -1.0: dV,
-        }
-
-        def evaluate(tensor_product):
-            return evaluation_table.get(tensor_product, tensor_product)
-        
-        def coevaluate(tensor_product):
-            return coevaluation_table.get(tensor_product, tensor_product)
-        
-        def RMatrix(tensor_product):
-            return R_table_VV.get(tensor_product, tensor_product)
-        
-        def detect_change(equation):
-            '''
-            Observes what changes are happening between different partitions of knot diagram.
-            '''
-            for idx in range(0, len(equation)-1):
-                '''
-                Cup left of original.
-                '''
-                print(equation[idx])
-                print(equation[idx+1])
-
-            return None
-        
-        detect_change(equation)
-        
-        '''
-        Logic to read in equation.
-        Build equation and alter as we move through the changes.
-        'Detect change' function (between steps).
-            1. Get initial state
-                [V, dV] -> Create tensor
-            2. Check operation for next state:
-                Cup and location
-                    [V, dV] -> [V, dV, V, dV]
-                    = insert tensor factors accordingly (location = index), (function = cap or cup) using the insert_tensor function
-                Crossing and location
-                    [V, dV, V, dV] -> [V, dV, dV, V]
-                    = crossing, apply correct R matrix at location
-        '''
-
-        for idx, i in enumerate(equation):
-            elements = []
-            vals = []
-            product = []
-            if len(i)> 1:
-                for j in i:
-                    elements.append(basis_table.get(j[2]))
-                print(elements)
-                prev_elements = elements
-
-                for p in range(0, len(elements)-1, 2):
-                    vals.append(evaluate(TensorProduct(elements[p], elements[p+1])))
-
-                
-                if len(vals)>1:
-                    tensor_equation = 0
-                    for dxd in range(0, len(vals)-1):
-                        
-                        if tensor_equation == 0:
-                            tensor_equation = TensorProduct(vals[dxd], vals[dxd+1])
-                        
-                        else:
-                            tensor_equation = TensorProduct(tensor_equation, vals[dxd+1])
-                else:
-                    tensor_equation = vals[0]
-
-                print(tensor_equation)
-            
-            else:
-                # x coord
-                ### Need to work on this logic...
-                order = equation[idx-1]
-                order.append(i[0])
-                order = sorted(order, key = lambda x: x[0])
-                crossing_index  = order.index(i[0])
-                ### Crossing is between elements at crossing_index and crossing_index-1
-                ### Crossing type (apply R matrix correctly)
-                print(crossing_index)
-                print(prev_elements[crossing_index-1], prev_elements[crossing_index])
-        
-
-        plt.plot([i[0] for i in self.projection],[i[1] for i in self.projection], linestyle = '-', c='blue')
-        plt.plot([self.projection[0][0], self.projection[-1][0]], [self.projection[0][1], self.projection[-1][1]], c='blue')
-
-        for pt in self.projection:
-            x, y = pt[0], pt[1]
-            value = pt[5]
-            plt.text(x, y, str(value), fontsize=9, ha='left', va='bottom')
-
-        for i in tensors:
-            plt.hlines(i[0][1], xmin=min(self.projection[:, 0]), xmax=max(self.projection[:, 0]), color='red', linestyle='--')
-
-        plt.title('Projection of Knot: Quantum Invariant')
-        
-        plt.show()
 
     def alexander_polynomial(self, knot):
         '''
@@ -586,13 +408,3 @@ class Q_invariant:
         print(x)
         print(p)
         return l
-    
-# discretization = 100
-# knot_type = '0_1'
-# state_space = np.zeros((discretization, discretization, discretization))
-# knot = Knot(knot_type, state_space)
-# knot = knot.initialize()
-# knot = orient(knot)
-
-# Q = Q_invariant(knot, 'Uq(sl3)')
-# Q.build_equation()

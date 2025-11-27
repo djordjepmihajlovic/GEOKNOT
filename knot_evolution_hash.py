@@ -250,33 +250,6 @@ def crumple(array_dict):
 
     return energy
 
-# def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshold = 3, samples = 20):
-
-#     coords = list(array_dict.keys())
-#     vals = [array_dict[c] for c in coords]
-#     score = 0
-#     valid_pairs = []
-
-#     # First collect all possible long-range pairs
-#     for i in range(len(coords)):
-#         for j in range(i + 1, len(coords)):
-#             if abs(vals[i] - vals[j]) >= sequence_threshold:
-#                 valid_pairs.append((i, j))
-
-#     # If there are fewer than `samples` valid pairs, use all
-#     sample_pairs = random.sample(valid_pairs, min(samples, len(valid_pairs)))
-
-#     for i, j in sample_pairs:
-#         spatial_dist = np.sqrt(
-#             (coords[i][0] - coords[j][0]) ** 2 +
-#             (coords[i][1] - coords[j][1]) ** 2 +
-#             (coords[i][2] - coords[j][2]) ** 2
-#         )
-#         if spatial_dist <= distance_threshold:
-#             score += 1
-
-#     return score
-
 def threading(array_dict, min_length = 5, max_length = 20):
     '''
     Define arcs/loops (some subsection of the knot) 
@@ -417,225 +390,6 @@ def positional_difference(array, update_array):
     differences = np.sum((sorted_indices_1 - sorted_indices_2) ** 2, axis=1)
     return np.sum(differences)
 
-
-@njit()
-def lattice_writhe_Cimasoni_defunct(array):
-    '''
-    Want to explore Tait numbers T(A_{i}) on the two areas (8 areas modulo symmetry) on the indicatrix corresponding to projections on: 
-    (x, z) plane, (y, z) plane [(x, y)??].
-    Additionally, need to have defined direction to capture +,- crossings: cross product of a fixed orientation along knot
-    '''
-
-    indicies = np.argwhere(array>0)
-    TA_1 = 0
-    TA_2 = 0
-    TA_3 = 0
-
-    for i in indicies:
-        '''
-        This gives you x, y coordinates of places in projection where crossings occur.
-        Nb. limited height so triple crossings don't occur
-        Need to build vector for each strand in crossing (3 points) and take cross product
-        Also need to define orientation for these vectors
-        Current issue: what to do when triple crossing? (lines 257, 264, 319, 312 ignore issue for now)
-        : solution - define 'good' projections (0, 1, 2) points, omit any other projections
-        ! Projections are wrong, these are projections onto planes (1, 1, 0), (1, 0, 1), (0, 1, 1)
-        Projections of 8 quadrant indicatrix:
-        1. (1, 1, 1)
-        2. (1, 1, -1)
-        3. (1, -1, 1)
-        4. (1, -1, -1) 
-        '''
-
-        projected_vector_yz = array[:, i[1], i[2]] # list on yz plane projections
-        projected_vector_xz = array[i[0], :, i[2]] # list on xz plane projections
-        projected_vector_xy = array[i[0], i[1], :] # list on xy plane projections
-
-        points_yz = np.argwhere(projected_vector_yz > 0) # gives two locations (x) of crossings
-        points_xz = np.argwhere(projected_vector_xz > 0) # gives two locations (y) of crossings
-        points_xy = np.argwhere(projected_vector_xy > 0)
-
-        ## yz plane
-        if len(points_yz) == 2: 
-
-            vec_1_yz = np.empty((2, 4))
-            vec_2_yz = np.empty((2, 4))
-
-            idx_1_yz = 0
-            idx_2_yz = 0
-
-            for dx in [-1, 0, 1]:
-                for dy in [-1, 0, 1]:
-                    for dz in [-1, 0, 1]:
-
-                        if dx == 0 and dy == 0 and dz == 0:
-                            continue
-
-                        nx_1, ny_1, nz_1 = points_yz[0].item() + dx, i[1] + dy, i[2] + dz
-                        nx_2, ny_2, nz_2 = points_yz[1].item() + dx, i[1] + dy, i[2] + dz
-
-                        if 0<= nx_1 <array.shape[0] and 0<= ny_1 <array.shape[1] and 0<= nz_1 <array.shape[2] and array[nx_1][ny_1][nz_1] > 0:
-
-                            if idx_1_yz < 2:
-                                vec_1_yz[idx_1_yz] = [nx_1, ny_1, nz_1, array[nx_1][ny_1][nz_1]]
-
-                            idx_1_yz +=1
-
-                        if 0<= nx_2 <array.shape[0] and 0<= ny_2 <array.shape[1] and 0<= nz_2 <array.shape[2] and array[nx_2][ny_2][nz_2] > 0:
-
-                            if idx_2_yz < 2:
-                                vec_2_yz[idx_2_yz] = [nx_2, ny_2, nz_2, array[nx_2][ny_2][nz_2]]
-
-                            idx_2_yz += 1
-
-            # define vector to point small -> large
-            p1 = vec_1_yz[0]
-            p2 = vec_1_yz[1]
-            p3 = vec_2_yz[0]
-            p4 = vec_2_yz[1]
-
-            arrow_1 = [p1[0] - p2[0], p1[1] - p2[1], p1[2] - p2[2]]
-            arrow_2 = [p3[0] - p4[0], p3[1] - p4[1], p3[2] - p4[2]]
-
-            ##
-            writhe_distance = abs(vec_1_yz[0][3] - vec_2_yz[0][3]) 
-            ##
-
-            arrow_1 = np.array(arrow_1)
-            arrow_2 = np.array(arrow_2)
-
-            if p4[3]>p3[3]:
-                arrow_2 = -1 * arrow_2
-            
-            if p2[3]>p1[3]:
-                arrow_1 = -1 * arrow_1
-
-            cross_prod = np.cross(arrow_1, arrow_2)
-            sign = np.sign(cross_prod[0])
-            TA_1 += sign
-
-        ## xz plane
-        if len(points_xz) == 2:
-
-            vec_1_xz = np.empty((2, 4))
-            vec_2_xz = np.empty((2, 4))
-
-            idx_1_xz = 0
-            idx_2_xz = 0
-
-            for dx in [-1, 0, 1]:
-                for dy in [-1, 0, 1]:
-                    for dz in [-1, 0, 1]:
-
-                        if dx == 0 and dy == 0 and dz == 0:
-                            continue
-
-                        nx_1, ny_1, nz_1 = i[0] + dx, points_xz[0].item() + dy, i[2] + dz
-                        nx_2, ny_2, nz_2 = i[0] + dx, points_xz[1].item() + dy, i[2] + dz
-
-                        if 0<= nx_1 <array.shape[0] and 0<= ny_1 <array.shape[1] and 0<= nz_1 <array.shape[2] and array[nx_1][ny_1][nz_1] > 0:
-
-                            if idx_1_xz < 2:
-                                vec_1_xz[idx_1_xz] = [nx_1, ny_1, nz_1, array[nx_1][ny_1][nz_1]]
-
-                            idx_1_xz +=1
-
-                        if 0<= nx_2 <array.shape[0] and 0<= ny_2 <array.shape[1] and 0<= nz_2 <array.shape[2] and array[nx_2][ny_2][nz_2] > 0:
-
-                            if idx_2_xz < 2:
-                                vec_2_xz[idx_2_xz] = [nx_2, ny_2, nz_2, array[nx_2][ny_2][nz_2]]
-
-                            idx_2_xz += 1
-
-            # define vector to point small -> large
-            p1 = vec_1_xz[0]
-            p2 = vec_1_xz[1]
-            p3 = vec_2_xz[0]
-            p4 = vec_2_xz[1]
-
-            arrow_1 = [p1[0] - p2[0], p1[1] - p2[1], p1[2] - p2[2]]
-            arrow_2 = [p3[0] - p4[0], p3[1] - p4[1], p3[2] - p4[2]]
-
-            ##
-            writhe_distance = abs(vec_1_xz[0][3] - vec_2_xz[0][3]) 
-            ##
-
-            arrow_1 = np.array(arrow_1)
-            arrow_2 = np.array(arrow_2)
-
-            if p4[3]>p3[3]:
-                arrow_2 = -1 * arrow_2
-            
-            if p2[3]>p1[3]:
-                arrow_1 = -1 * arrow_1
-
-            cross_prod = np.cross(arrow_1, arrow_2)
-            sign = np.sign(cross_prod[1]) 
-
-            TA_2 += sign
-
-        ## xy plane, not sure if this is necessary.
-        if len(points_xy) == 2:
-
-            vec_1_xy = np.empty((2, 4))
-            vec_2_xy = np.empty((2, 4))
-
-            idx_1_xy = 0
-            idx_2_xy = 0
-
-            for dx in [-1, 0, 1]:
-                for dy in [-1, 0, 1]:
-                    for dz in [-1, 0, 1]:
-
-                        if dx == 0 and dy == 0 and dz == 0:
-                            continue
-
-                        nx_1, ny_1, nz_1 = i[0] + dx, i[1] + dy, points_xy[0].item() + dz
-                        nx_2, ny_2, nz_2 = i[0] + dx, i[1] + dy, points_xy[1].item() + dz
-
-                        if 0<= nx_1 <array.shape[0] and 0<= ny_1 <array.shape[1] and 0<= nz_1 <array.shape[2] and array[nx_1][ny_1][nz_1] > 0:
-
-                            if idx_1_xy < 2:
-                                vec_1_xy[idx_1_xy] = [nx_1, ny_1, nz_1, array[nx_1][ny_1][nz_1]]
-
-                            idx_1_xy +=1
-
-                        if 0<= nx_2 <array.shape[0] and 0<= ny_2 <array.shape[1] and 0<= nz_2 <array.shape[2] and array[nx_2][ny_2][nz_2] > 0:
-
-                            if idx_2_xy < 2:
-                                vec_2_xy[idx_2_xy] = [nx_2, ny_2, nz_2, array[nx_2][ny_2][nz_2]]
-
-                            idx_2_xy += 1
-
-            # define vector to point small -> large
-            p1 = vec_1_xy[0]
-            p2 = vec_1_xy[1]
-            p3 = vec_2_xy[0]
-            p4 = vec_2_xy[1]
-
-            arrow_1 = [p1[0] - p2[0], p1[1] - p2[1], p1[2] - p2[2]]
-            arrow_2 = [p3[0] - p4[0], p3[1] - p4[1], p3[2] - p4[2]]
-
-            ##
-            writhe_distance = abs(vec_1_xy[0][3] - vec_2_xy[0][3]) 
-            ##
-
-            arrow_1 = np.array(arrow_1)
-            arrow_2 = np.array(arrow_2)
-
-            if p4[3]>p3[3]:
-                arrow_2 = -1 * arrow_2
-            
-            if p2[3]>p1[3]:
-                arrow_1 = -1 * arrow_1
-
-            cross_prod = np.cross(arrow_1, arrow_2)
-            sign = np.sign(cross_prod[2]) 
-
-            TA_3 += sign
-
-    return (TA_1 + TA_2 + TA_3)/6
-
 def metropolis_acceptance(old_energy, new_energy, temperature):
     '''
     Metropolis acceptance criterion.
@@ -691,18 +445,6 @@ def points_on_axis(array, axis):
     [float(x) for x in row[0]] + row[1].tolist() + [row[2]]
     for row in projected_points
     ]
-
-    ## Plot for debugging
-
-    # plt.scatter([i[0] for i in just_proj],[i[1] for i in just_proj])
-    # plt.plot([i[0] for i in projected_points],[i[1] for i in projected_points], linestyle = '-')
-
-    # for pt in projected_points:
-    #     x, y = pt[0], pt[1]
-    #     value = pt[5]
-    #     plt.text(x, y, str(value), fontsize=9, ha='left', va='bottom')
-
-    # plt.show()
 
     '''
     projected_points has (ordered) structure: 
@@ -834,6 +576,86 @@ def lattice_writhe_Cimasoni(array, no_points, projections_111, projections_1m11,
         TA += wr
     TA = TA/4
     return TA
+
+def lattice_writhe_Klenin(coord_list):
+    '''
+    Computes writhe using Klenin formulation.
+    Input: list of points in 3D space and value.
+    '''
+    
+    ringx = np.array([(x, y, z) for _, x, y, z in coord_list])
+    vals = np.array([val for val, _, _, _ in coord_list])
+
+    sorted_indices = np.argsort(vals)
+    ring1 = ringx[sorted_indices]
+    ring2 = ring1.copy()
+    matrix = np.zeros((ring1.shape[0], ring2.shape[0]))
+    # Loop on the first ring
+    for i in prange(ring1.shape[0]):
+        # Loop on the second ring
+        for j in prange(ring2.shape[0]):
+            matrix[i,j] = compute_single_sts_writhe(ring1, ring2, i, j, 2)
+        print(i)
+    return matrix
+
+
+def compute_single_sts_writhe(ring1, ring2, i, j, lw):
+
+    wr = 0
+    
+    # Loop over the segment of the first ring
+    for it in prange(-np.int64(lw/2)+i,np.int64(lw/2)+i):
+        # Loop over the segment of the second ring
+        for jt in prange(-np.int64(lw/2)+j, np.int64(lw/2)+j): 
+            
+            one = ring1[np.mod(it-1,ring1.shape[0]),:]
+            three = ring2[np.mod(jt-1,ring2.shape[0]),:]
+            two = ring1[np.mod(it,ring1.shape[0]),:]
+            four = ring2[np.mod(jt,ring2.shape[0]),:]
+
+            r12=two-one
+            r34=four-three
+            r23=three-two
+            r13=three-one
+            r14=four-one
+            r24=four-two
+
+            n1 = np.cross(r13,r14)
+            if np.linalg.norm(n1)==0:
+                continue
+            n1 = n1 / np.linalg.norm(n1)
+
+            n2 = np.cross(r14,r24)
+            if np.linalg.norm(n2)==0:
+                continue
+            n2 = n2 / np.linalg.norm(n2)
+
+            n3 = np.cross(r24,r23)
+            if np.linalg.norm(n3)==0:
+                continue
+            n3 = n3 / np.linalg.norm(n3)
+
+            n4 = np.cross(r23,r13)
+            if np.linalg.norm(n4)==0:
+                continue
+            n4 = n4 / np.linalg.norm(n4)
+
+            n1n2=np.dot(n1,n2)
+            n2n3=np.dot(n2,n3)
+            n3n4=np.dot(n3,n4)
+            n4n1=np.dot(n4,n1)
+
+            cvec = np.cross(r34,r12)
+            dprcvec = np.dot(cvec,r13)
+
+            if dprcvec == 0:
+                continue
+
+            omega = (np.arcsin( n1n2 ) + np.arcsin( n2n3 ) + np.arcsin( n3n4 ) + np.arcsin( n4n1 ) ) * dprcvec/np.abs(dprcvec);
+            
+            wr+=omega/(4*np.pi)
+
+    return 2*wr
 
 def BFACF(array_dict, timesteps, aimed_range):
     '''
@@ -987,40 +809,6 @@ def BFACF(array_dict, timesteps, aimed_range):
                 #         old_energy = new_energy
                 #     else:
                 #         continue
-
-    ### Plotting results: useful for analysis of optimal rates
-
-    # if len(wr_data)> 0:
-    #     coefficients = np.polyfit(count_data, wr_data, 1)
-    #     gradient, intercept = coefficients
-
-    #     best_fit_line = [gradient * x + intercept for x in count_data]
-
-    #     plt.plot(count_data, best_fit_line, label='Best Fit', color='red')
-    #     plt.plot(count_data, wr_data, label='Writhe Data')
-    #     plt.legend()
-    #     plt.xlabel('Time Steps')
-    #     plt.ylabel('Writhe')
-    #     plt.title('BFACF Writhe Control Rate')
-    #     plt.savefig('figs/bfacf_writhe_energy_rate_2.png')
-    #     plt.clf()
-
-    # if len(ent_data)> 0:
-    #     coefficients = np.polyfit(count_data, ent_data, 1)
-    #     gradient, intercept = coefficients
-
-    #     best_fit_line = [gradient * x + intercept for x in count_data]
-
-    #     plt.plot(count_data, best_fit_line, label='Best Fit', color='red')
-    #     plt.plot(count_data, ent_data, label='Entanglement Data')
-    #     plt.legend()
-    #     plt.xlabel('Time Steps')
-    #     plt.ylabel('Entanglement')
-    #     plt.title('BFACF Entanglement Control Rate')
-    #     plt.savefig('figs/bfacf_entanglement_energy_rate_2.png')
-    #     plt.clf()
-
-    #     print(f"Rate: {gradient}")
 
     return array_dict, old_writhe_energy, old_entanglement_energy
         
@@ -1275,40 +1063,4 @@ def pivot(array_dict, timesteps, knot, aimed_range):
                 else:
                     continue
 
-    ### Plotting results: useful for analysis of optimal rates 
-
-    # if len(wr_data) > 0:
-    #     coefficients_wr = np.polyfit(count_data, wr_data, 1)
-    #     gradient, intercept = coefficients_wr
-
-    #     best_fit_line = [gradient * x + intercept for x in count_data]
-
-    #     plt.plot(count_data, best_fit_line, label='Best Fit', color='red')
-    #     plt.plot(count_data, wr_data, label='Writhe Data')
-    #     plt.legend()
-    #     plt.xlabel('Time Steps')
-    #     plt.ylabel('Writhe')
-    #     plt.title('Pivot Writhe Control Rate')
-    #     plt.savefig('figs/pivot_writhe_energy_rate_2.png')
-    #     plt.clf()
-    
-    # if len(ent_data) > 0:
-
-    #     coefficients_ent = np.polyfit(count_data, ent_data, 1)
-    #     gradient, intercept = coefficients_ent
-
-    #     best_fit_line_ent = [gradient * x + intercept for x in count_data]
-
-    #     plt.plot(count_data, best_fit_line_ent, label='Best Fit Entanglement', color='red')
-    #     plt.plot(count_data, ent_data, label='Entanglement Data')
-    #     plt.legend()
-    #     plt.xlabel('Time Steps')
-    #     plt.ylabel('Entanglement')
-    #     plt.title('Pivot Entanglement Control Rate')
-    #     plt.savefig('figs/pivot_entanglement_energy_rate_2.png')
-    #     plt.clf()
-
-    #     print(f"Rate: {gradient}")
-
     return array_dict
-

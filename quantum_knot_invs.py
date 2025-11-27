@@ -307,6 +307,7 @@ def crossing(projection, axis):
                             intersections.append(point + [wr])
     return intersections
         
+xxxxx
 
 class Q_invariant:
     def __init__(self, array, q_group):

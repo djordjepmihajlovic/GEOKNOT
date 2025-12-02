@@ -1,10 +1,7 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from numba import njit, prange
-from sympy import symbols, simplify
+from numba import njit
 import kymoknot 
 from kymoknot.searchtype import SearchType
-from kymoknot.knotentry import KnotEntry
 from knot_init import *
 
 '''

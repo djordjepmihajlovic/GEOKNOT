@@ -5,10 +5,9 @@ from knot_reader import *
 import time
 from multiprocessing import Pool
 import os
-import math
 import numpy as np
 import csv
-from quantum_knot_invs import Q_invariant
+from knot_invs import Q_invariant
 
 '''
 Its always useful to write down ideas:)
@@ -30,8 +29,12 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
     ### Say if we get a knot with correct writhe bin but wrong type -> perturb into correct type.
     ### Would need to find a way of locating the right components to perturb.
 
+    # warm up phase (unconstrained, no energy/geometry states to target)
+    # pivot = x
+    # BFACF = x
+
     pivot_lag = 5000
-    BFACF_lag = 20000
+    BFACF_lag = 10000
 
     # 2.) Implement dynamical logic to switch between pivot and BFACF based on the current state.
     # 3.) Implement saving knot as correct type if generated.
@@ -44,6 +47,7 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
 
     writhe_edges = np.linspace(*writhe_range, writhe_bins + 1)
     entang_edges = np.linspace(*entang_range, entang_bins + 1)
+    print(writhe_edges)
     
     writhe_ranges = [(writhe_edges[i], writhe_edges[i + 1]) for i in range(len(writhe_edges) - 1)]
     entang_ranges = [(entang_edges[i], entang_edges[i + 1]) for i in range(len(entang_edges) - 1)]
@@ -122,7 +126,7 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
                             new_coord_w = [(w[idx],) + coord for idx, coord in enumerate(new_coord)]
 
                             # included int(...) for entanglement 
-                            np.savetxt(f'samples/tk_cr/tk_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{(entang_ranges[j][0]+entang_ranges[j][1])/2}.csv', new_coord_w, delimiter=",", fmt='%.5f')
+                            np.savetxt(f'samples/tk_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{(entang_ranges[j][0]+entang_ranges[j][1])/2}.csv', new_coord_w, delimiter=",", fmt='%.5f')
                             sampled_states.append([partition, int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), (entang_ranges[j][0]+entang_ranges[j][1])/2])
                             instance_per_range.append([int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), (entang_ranges[j][0]+entang_ranges[j][1])/2, instance])
             
@@ -235,29 +239,6 @@ def main():
             writhe_dist.append(writhe)
             entang_dist.append(entang)
 
-    # x_coords = [item[0] for item in times]
-    # y_coords = [item[1] for item in times]
-    # values = [item[2] for item in times]
-
-    # # Create a grid for the heatmap
-    # x_bins = np.unique(x_coords)
-    # y_bins = np.unique(y_coords)
-    # heatmap = np.zeros((len(x_bins), len(y_bins)))
-
-    # # Populate the heatmap grid
-    # for x, y, value in times:
-    #     x_idx = np.where(x_bins == x)[0][0]
-    #     y_idx = np.where(y_bins == y)[0][0]
-    #     heatmap[x_idx, y_idx] = value
-
-    # # Plot the heatmap
-    # plt.imshow(heatmap, origin='lower', cmap='viridis', extent=[min(x_bins), max(x_bins), min(y_bins), max(y_bins)])
-    # plt.colorbar(label='Iterations.')
-    # plt.xlabel('Writhe')
-    # plt.ylabel('Entanglement')
-    # plt.title('Heatmap of Instances per Range')
-    # plt.show()
-
     plt.hist2d(writhe_dist, entang_dist, bins=(len(writhe_dist), len(entang_dist)), density=True, cmap='viridis')
     plt.colorbar(label='Density')
     plt.xlabel('Writhe')
@@ -288,13 +269,13 @@ par = ArgumentParser()
 par.add_argument("-d", "--discretization", type=int, default=100, help="Discretization of state space y,z axis.")
 par.add_argument("-k", "--knot", type=str, default='0_1', help="Knot type.")
 par.add_argument("-s", "--sampler", type=str, default='Metropolis', help="Sampling method.")
-par.add_argument("-no", "--no_samples", type=int, default=10, help="Number of decorrelated samples to generate.")
-par.add_argument("-sub", "--no_sub_samples", type=int, default=10, help="Number of sub-samples per process.")
+par.add_argument("-no", "--no_samples", type=int, default=1, help="Number of samples to generate per geometric requirement.")
+par.add_argument("-sub", "--no_sub_samples", type=int, default=2, help="Number of sub-samples per process.")
 par.add_argument("-np", "--no_processes", type=int, default=os.cpu_count(), help="Number of cores to run code on.")
 
 par.add_argument("-met", "--metrics", type=list, default=['wr', 'ent'], help="Geometric state space metrics to explore. Possible metrics:" \
 "wr, ent, curv, tor, acn, pd, rgy")
-par.add_argument("-distr", "--state_space_distr", type=list, default=[(0, 35), (750, 2750)], help="End-to-end state space sample distribution.")
+par.add_argument("-distr", "--state_space_distr", type=list, default=[(0, 3), (500, 1000)], help="End-to-end state space sample distribution.")
 
 args = par.parse_args()
 

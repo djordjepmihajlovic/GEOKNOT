@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from knot_init import *
 from knot_evolution_hash import lattice_writhe_Klenin
-from quantum_knot_invs import *
+from knot_invs import *
 from scipy.linalg import expm
 from scipy.linalg import logm
 

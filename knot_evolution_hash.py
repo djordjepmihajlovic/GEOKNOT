@@ -1,8 +1,8 @@
 import numpy as np
 from numba import njit, prange
 from knot_init import *
-from quantum_knot_invs import *
-import networkx as nx
+from knot_invs import *
+import math
 import random
 
 '''
@@ -215,16 +215,6 @@ def check_verticies(array_dict):
     return status
 
 
-def build_correlation_graph(array):
-    '''
-    Build correlation graph between points for parallelization.
-    '''
-    indicies = np.argwhere(array > 0)
-    G = nx.Graph()
-
-    for idx, point in enumerate(indicies):
-        G.add_node(idx, coords=tuple(point))
-
 def crumple(array_dict):
     '''
     Markov Chain method to enforce movement toward more crumpled structure.
@@ -346,6 +336,9 @@ def average_curvature(array_dict):
 
 @njit()
 def radius_of_gyration(array):
+    '''
+    Radius of gyration 
+    '''
     indicies = np.argwhere(array > 0)
     center_of_mass = np.mean(indicies, axis=0)
     return np.sqrt(np.mean(np.sum((indicies - center_of_mass)**2, axis=1)))
@@ -657,6 +650,9 @@ def compute_single_sts_writhe(ring1, ring2, i, j, lw):
 
     return 2*wr
 
+### can reduce clutter here
+### also need to make it so updates are hard
+
 def BFACF(array_dict, timesteps, aimed_range):
     '''
     BFACF with chosen sampling methods
@@ -744,7 +740,7 @@ def BFACF(array_dict, timesteps, aimed_range):
         # Only needs to sweep neighbours of the new edge not the entire array
 
         status = check_verticies(update_array)
-        if status < -2:#< -2:
+        if status < -2:#< -2: Valid configurations.
             continue
         else:
 
@@ -793,7 +789,11 @@ def BFACF(array_dict, timesteps, aimed_range):
                         continue
 
             elif phase == 2:
+                # Hard constraint only accept if deviation within 10% of target
+                tol_ent = 0.1
                 if new_writhe_energy < target_wr:
+                    if not (target_entang*(1 - tol_ent) <= new_entanglement_energy <= target_entang*(1 + tol_ent)):
+                        continue
                     if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=temp):
                         array_dict = update_array
                         old_entanglement_energy = new_entanglement_energy
@@ -801,89 +801,8 @@ def BFACF(array_dict, timesteps, aimed_range):
                         old_energy = new_energy
                     else:
                         continue
-                # else:
-                #     if metropolis_acceptance(old_energy=-old_energy, new_energy=-new_energy, temperature=temp):
-                #         array_dict = update_array
-                #         old_entanglement_energy = new_entanglement_energy
-                #         old_writhe_energy = new_writhe_energy
-                #         old_energy = new_energy
-                #     else:
-                #         continue
 
     return array_dict, old_writhe_energy, old_entanglement_energy
-        
-
-def loopBFACF(array_dict, timesteps):
-    '''
-    BFACF with chosen sampling methods
-    '''
-    # Gradient descent towards entanglement first.
-
-
-    init_array = dict(array_dict)
-    max_x = max(p[0] for p in init_array) + 1
-    max_y = max(p[1] for p in init_array) + 1
-    max_z = max(p[2] for p in init_array) + 1
-    init2array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
-    for (x, y, z), val in init_array.items():
-        init2array[x, y, z] = val
-
-
-    target, thread = threading(init_array)
-    target_vec = [pos for pos, val in array_dict.items() if val == thread]
-    old_energy = 1/np.linalg.norm(np.array(target_vec[0]) - np.array(thread))
-
-    completed = False
-
-    for time in range(timesteps):
-        if completed:
-            break
-        if time % (timesteps/10) == 0:
-            print(f"BFACF: {time/timesteps}")
-
-        update_array = dict(array_dict)
-
-        # choose an edge +- 5 from thread
-        valid_indicies = [pos for pos, val in array_dict.items() if abs(val - thread) <= 5]
-
-        random_edge = random.choice(valid_indicies)
-        new_edge = find_new(update_array,random_edge)
-
-        if new_edge == (-1, -1, -1, -1):
-            continue
-
-        old_val = array_dict[random_edge]
-        del update_array[random_edge]
-        update_array[new_edge[:3]] = update_array.get(new_edge[:3], 0) + old_val
-
-        # New function to check for singular points, takes in the updated array edge checks connecting strands (forward and backward) does a sweep to check for intersections
-        # Only needs to sweep neighbours of the new edge not the entire array
-
-        status = check_verticies(update_array)
-        if status < -2:#< -2:
-            continue
-        else:
-
-            max_x = max(p[0] for p in update_array) + 1
-            max_y = max(p[1] for p in update_array) + 1
-            max_z = max(p[2] for p in update_array) + 1
-            update2array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
-            for (x, y, z), val in update_array.items():
-                update2array[x, y, z] = val
-
-            # Euclidean distance between thread and target
-            new_energy = 1/np.linalg.norm(np.array(new_edge[:3]) - np.array(target))
-
-            if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=0.01):
-                array_dict = update_array
-                old_energy = new_energy
-                print('new_energy accepted')
-            else:
-                continue
-
-        print(new_energy)
-
-    return array_dict
 
 
 def pivot(array_dict, timesteps, knot, aimed_range):
@@ -942,25 +861,6 @@ def pivot(array_dict, timesteps, knot, aimed_range):
             alpha = 0
             old_energy = old_writhe_energy
             break 
-
-        # if time<10 or time%int(timesteps/no_topology_checks) == 0:
-        #     # Check topology a set time, also first few timesteps before big conformational changes
-        #     print('Checking topology consistency...')
-        #     topo = Q_invariant(array_dict, 'Uq(sl2)').alexander_polynomial_hash(knot=knot) 
-        #     if topo:
-        #         prev_array_dict_chunk = array_dict
-        #         prev_energy_chunk = old_energy
-        #         prev_entang_chunk = old_entanglement_energy
-        #         prev_writhe_chunk = old_writhe_energy
-        #         print('Topology consistent, continue...')
-        #         continue
-                
-        #     else:
-        #         array_dict = prev_array_dict_chunk
-        #         old_energy = prev_energy_chunk
-        #         old_entanglement_energy = prev_entang_chunk
-        #         old_writhe_energy = prev_writhe_chunk
-        #         print('Inconsistent topology reverting back to previous instance...')
 
         count_data.append(time)
         wr_data.append(old_writhe_energy)
@@ -1064,3 +964,68 @@ def pivot(array_dict, timesteps, knot, aimed_range):
                     continue
 
     return array_dict
+
+def bias_energy(ent, wr, target_ent, target_wr, k_ent=1.0, k_wr=1.0):
+    """
+    Harmonic bias centered on targets
+    """
+    return k_ent * (ent - target_ent)**2 + k_wr * (wr - target_wr)**2
+
+
+def metropolis_biased_accept(old_ent, old_wr, new_ent, new_wr,
+                             target_ent, target_wr,
+                             k_ent=1.0, k_wr=1.0, temp=1e-3):
+    """
+    Compute biased energies and perform a Metropolis accept/reject.
+    """
+    old_E = bias_energy(old_ent, old_wr, target_ent, target_wr, k_ent, k_wr)
+    new_E = bias_energy(new_ent, new_wr, target_ent, target_wr, k_ent, k_wr)
+
+    dE = new_E - old_E
+    if dE <= 0:
+        return True, new_E, old_E
+    else:
+        if temp <= 0:
+            return False, new_E, old_E
+        p = math.exp(-dE / temp)
+        if random.random() < p:
+            return True, new_E, old_E
+        else:
+            return False, new_E, old_E
+
+def dict_to_dense(array_dict):
+    """
+    Turn dict into dense numpy array.
+    """
+    max_x = max(p[0] for p in array_dict) + 1
+    max_y = max(p[1] for p in array_dict) + 1
+    max_z = max(p[2] for p in array_dict) + 1
+    arr = np.zeros((max_x, max_y, max_z), dtype=np.float64)
+    for (x, y, z), val in array_dict.items():
+        arr[x, y, z] = val
+    return arr
+
+def compute_observables(update_dict, alpha, no_points):
+
+    update2array = dict_to_dense(update_dict)
+
+    projections_111 = points_on_axis(update2array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
+    projections_1m11 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
+    projections_11m1 = points_on_axis(update2array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
+    projections_1m1m1 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
+
+    new_writhe_energy = lattice_writhe_Cimasoni(update2array, no_points,
+                                            projections_111=projections_111,
+                                            projections_1m11=projections_1m11,
+                                            projections_11m1=projections_11m1,
+                                            projections_1m1m1=projections_1m1m1)
+    
+    # new_entanglement_energy = long_range_entanglement(update_dict)
+    new_entanglement_energy = average_curvature(update_dict)
+    new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
+
+    return new_energy
+
+def bias_energy(wr, ent, target_wr, target_ent, sigma_wr, sigma_ent):
+    return 0.5 * ((wr - target_wr)**2 / sigma_wr**2 
+                  + (ent - target_ent)**2 / sigma_ent**2)

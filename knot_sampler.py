@@ -18,7 +18,7 @@ Could do this for a range?
 Also; if an 0_1 or 3_1 change; save them as respective knot.
 '''
 
-def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bins):
+def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins):
     '''
     Need a way to randomly implement levels of energy checking to get samples that are highly writhed
     Set no. bins = no. sub_samples, then we want each bin to be filled w exactly one sample.
@@ -135,7 +135,7 @@ def wang_landau_sampling(partition, oriented, knot_type, writhe_bins, entang_bin
 def process_wang_landau(args):
 
     i, oriented, knot_type, bins_1, bins_2 = args
-    sampled_states, instance_per_range = wang_landau_sampling(i, oriented, knot_type, bins_1, bins_2)
+    sampled_states, instance_per_range = _sampling(i, oriented, knot_type, bins_1, bins_2)
     return sampled_states, instance_per_range
 
 

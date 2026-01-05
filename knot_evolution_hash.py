@@ -14,26 +14,21 @@ Relevant literature:
     * Pivot: 
     * Cimasoni Writhe calculation O(nlog(n)): 
     * Klenin Writhe calculation O(n^{2}): 
-    * Quantum invariants of knots
 
 Key Features:
     * Oriented lattice knots S^{1} in Z^{3}
+    * Geometrically selective BFACF/Pivot updates
     * Writhe calculation (https://www.unige.ch/math/folks/cimasoni/writhe.pdf)
     * Visualization
 
-To Implement:
+Future Implementations:
     * Links
     * Knotoids 
     * Bonded knotoids
     * Proteins (spec. bonded knotoids (capture forces) ~ protein_init.py ~ load in protein from PDB and automate)
     * S^{2} in Z^{4}, (S^{n} in Z^{n+2})
 
-Currently (24/04/25):
-    * Writhe calc and specific projections (apparently (np.pi, np.e, sqrt(2))) might be a bad idea...
-    * Maybe experiment with slightly more frequent topology checks? (dependent on how quickly 3_1 samples...)
-
 To do (23/06/25):
-    * Currently theres an issue with how BFACF is implemented that needs to be checked; topology seems to change when its not supposed to.
     * I want to implement a mechanism (probably a bias in the BFACF moves) to ensure `threading' occurs to the knots
     * Idea:
     * define arcs/loops (some subsection of the knot) 

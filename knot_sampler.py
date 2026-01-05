@@ -18,7 +18,7 @@ Could do this for a range?
 Also; if an 0_1 or 3_1 change; save them as respective knot.
 '''
 
-def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins):
+def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins, plot):
     '''
     Need a way to randomly implement levels of energy checking to get samples that are highly writhed
     Set no. bins = no. sub_samples, then we want each bin to be filled w exactly one sample.
@@ -125,6 +125,9 @@ def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins):
                             w = [wx[0] for wx in elements]
                             new_coord_w = [(w[idx],) + coord for idx, coord in enumerate(new_coord)]
 
+                            if plot == True:
+                                plot_3d_line(new_coord_w)
+
                             # included int(...) for entanglement 
                             np.savetxt(f'samples/{knot_type}_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv', new_coord_w, delimiter=",", fmt='%.5f')
                             sampled_states.append([partition, int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2)])
@@ -134,8 +137,8 @@ def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins):
 
 def process_wang_landau(args):
 
-    i, oriented, knot_type, bins_1, bins_2 = args
-    sampled_states, instance_per_range = _sampling(i, oriented, knot_type, bins_1, bins_2)
+    i, oriented, knot_type, bins_1, bins_2, plot = args
+    sampled_states, instance_per_range = _sampling(i, oriented, knot_type, bins_1, bins_2, plot)
     return sampled_states, instance_per_range
 
 
@@ -168,7 +171,7 @@ def main():
     bins_1 = sub_samples
     bins_2 = sub_samples
 
-    args_list = [(i, oriented, knot_type, bins_1, bins_2) for i in range(samples)]
+    args_list = [(i, oriented, knot_type, bins_1, bins_2, plot) for i in range(samples)]
 
     with Pool(processes=num_processes) as pool: 
         results = pool.map(process_wang_landau, args_list)  # Parallelize over samples
@@ -276,6 +279,7 @@ par.add_argument("-np", "--no_processes", type=int, default=os.cpu_count(), help
 par.add_argument("-met", "--metrics", type=list, default=['wr', 'ent'], help="Geometric state space metrics to explore. Possible metrics:" \
 "wr, ent, curv, tor, acn, pd, rgy")
 par.add_argument("-distr", "--state_space_distr", type=list, default=[(0, 3), (500, 1000)], help="End-to-end state space sample distribution.")
+par.add_argument("-plot", "--plot", type=bool, default=False, help="Plot output (best used if sampling a single knot).")
 
 args = par.parse_args()
 
@@ -286,6 +290,7 @@ if __name__ == "__main__":
     samples = args.no_samples
     num_processes = args.no_processes
     sub_samples = args.no_sub_samples
+    plot = args.plot
 
     main()
 

@@ -14,10 +14,10 @@ class Knot:
     def initialize(self):
 
         if self.knot == '0_1':
-            return k0_1_initialization(self.array)
+            return k0_1_initialization_100(self.array)
         
         elif self.knot == '3_1':
-            return k3_1_initialization_L(self.array)
+            return k3_1_initialization_100(self.array)
         
 def plot_3d(array):
 
@@ -215,20 +215,22 @@ def k0_1_initialization(array):
 
     return array
 
-def k0_1_initialization_corners(array):
+def k0_1_initialization_100(array):
     '''
-    Initializes an unknot on the boundary of the state space i.e.
+    Initializes an unknot on the boundary of the state space (size 100).
     '''
 
     length = len(array[0])
-    for i in prange(50, length - 24):
-        for j in prange(50, length - 24):
-            if i == 50 or i == length-25:
+    for i in prange(36, length - 37):
+        for j in prange(36, length - 37):
+            if i == 36 or i == length-38:
                 array[50][i][j] = 1
 
-            if j == 50 or j == length-25:
+            if j == 36 or j == length-38:
 
                 array[50][i][j] = 1
+
+    array[50][36][36] = array[50][36][62] = array[50][62][62] = array[50][62][36] = 0
 
     print(len(np.argwhere(array == 1)))
 
@@ -335,6 +337,40 @@ def k3_1_initialization(array):
     array[5][50][50] = 1    
 
     print(len(np.argwhere(array == 1)))
+
+    return array
+
+def k3_1_initialization_100(array):
+    '''
+    Initializes a 3_1 in state space (size 100).
+    '''
+
+    draw_line_xy(array, 6, 51, 49, 51, 38, 100) # length = 9
+    draw_line_xy(array, 6, 50, 37, 44, 37, 100) # length = 6
+
+    array[5][37][43] = array[4][37][43] = array[3][37][43] = 1
+
+    draw_line_xy(array, 2, 43, 38, 43, 45, 100) # length = 7
+
+    array[5][46][43] = array[4][46][43] = array[3][46][43] = 1
+
+    draw_line_xy(array, 6, 43, 47, 43, 56, 100) # length = 5
+    draw_line_xy(array, 6, 44, 57, 52, 57, 100) # length = 8
+    draw_line_xy(array, 6, 53, 56, 53, 41, 100) # length = 11
+
+    array[5][40][53] = 1 # 5
+
+    draw_line_xy(array, 4, 52, 40, 41, 40, 100) # length = 11
+    draw_line_xy(array, 4, 40, 41, 40, 49, 100) # length = 8
+    draw_line_xy(array, 4, 41, 50, 49, 50, 100) # length = 8
+
+    # total length = 81
+
+    array[5][50][50] = 1    
+
+    print(len(np.argwhere(array == 1)))
+
+    plot_3d(array)
 
     return array
 

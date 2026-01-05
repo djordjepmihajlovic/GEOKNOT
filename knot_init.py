@@ -370,8 +370,6 @@ def k3_1_initialization_100(array):
 
     print(len(np.argwhere(array == 1)))
 
-    plot_3d(array)
-
     return array
 
 def k3_1_initialization_L(array):

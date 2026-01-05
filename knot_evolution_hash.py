@@ -39,8 +39,10 @@ To do (23/06/25):
 
 def neighbours(array_dict, point):
     """
+    Input:
     Returns the full 3x3x3 neighborhood of a point in 3D space.
     Each neighbor is a (x, y, z, value) tuple.
+    Output:
     """
     x, y, z = point
     neighbours = []
@@ -58,7 +60,9 @@ def neighbours(array_dict, point):
 
 def restricted_neighbours(array_dict, point):
     '''
+    Input:
     Takes in array and point in array and outputs an array of neighbours and neighbour value.
+    Output:
     '''
 
     x, y, z = point
@@ -75,9 +79,11 @@ def restricted_neighbours(array_dict, point):
 
 def orient(hash_table):
     '''
+    Input: 
     For fixing orientation: make copy of hash table, assign 1 to some point and N to one of its neighbours. Now impose that every point (excluding)
     1 and N must have a neighbour with +1 value and -1 value of current value.
     Save both oriented and unoriented structure, use unoriented structure (just 1's) for some calculations.
+    Output: 
     '''
 
     # Find the coordinates where the value is 1 (this replaces np.argwhere)
@@ -134,7 +140,9 @@ def orient(hash_table):
 
 def find_new(array, edge):
     '''
+    Input: 
     Find valid locations to move edge, nb. needs to be restricted neighbours
+    Output: 
     '''
 
     valid_neighbours = []
@@ -152,7 +160,9 @@ def find_new(array, edge):
 @njit()
 def check_singularities(array_dict, new_edge, val):
     '''
+    Input:
     Checks for singular points.
+    Output:
     '''
     # new edge
     # get neighbours of new edge
@@ -186,7 +196,9 @@ def check_singularities(array_dict, new_edge, val):
 
 def check_verticies(array_dict):
     """
+    Input:
     Checks the vertices of the 3D state space using dictionary-based storage.
+    Output:
     """
     indicies = [pos for pos, val in array_dict.items() if val > 0]
     status = 0
@@ -212,8 +224,10 @@ def check_verticies(array_dict):
 
 def crumple(array_dict):
     '''
+    Input:
     Markov Chain method to enforce movement toward more crumpled structure.
-    Defines energy as sum of distance between all indices in the dictionary
+    Defines energy as sum of distance between all indices in the dictionary.
+    Output:
     '''
     # Extract the keys (coordinates) and values (array values) from the dictionary
     coords = list(array_dict.keys())
@@ -237,9 +251,11 @@ def crumple(array_dict):
 
 def threading(array_dict, min_length = 5, max_length = 20):
     '''
+    Input:
     Define arcs/loops (some subsection of the knot) 
     calculate the center of mass of chosen loop. find plane that arc closes 
     move a chosen point through the perturbed center of mass.
+    Output:
     '''
 
     sequence_length = random.randint(min_length, max_length)
@@ -278,12 +294,14 @@ def threading(array_dict, min_length = 5, max_length = 20):
 
 def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshold=5):
     '''
+    Input:
     Measures spatial proximity between distant points in sequence.
     
     sequence_threshold: minimum "sequence" distance between points to be considered long-range
     distance_threshold: maximum Euclidean distance in space to count as close contact
     Returns:
     score counting long-range spatial entanglements
+    Output:
     '''
     coords = list(array_dict.keys())
     vals = [array_dict[c] for c in coords]
@@ -308,7 +326,9 @@ def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshol
 
 def average_curvature(array_dict):
     '''
+    Input:
     Computes the average curvature of a 3D curve defined by coords.
+    Output:
     '''
     coords = list(array_dict.keys())
     n = len(coords)
@@ -332,7 +352,9 @@ def average_curvature(array_dict):
 @njit()
 def radius_of_gyration(array):
     '''
+    Input:
     Radius of gyration 
+    Output:
     '''
     indicies = np.argwhere(array > 0)
     center_of_mass = np.mean(indicies, axis=0)
@@ -341,7 +363,9 @@ def radius_of_gyration(array):
 @njit()
 def gyration_tensor_and_eigenvalues(coords):
     '''
+    Input:
     Computes the gyration tensor and its eigenvalues.
+    Output:
     '''
 
     center_of_mass = np.mean(coords, axis=0)
@@ -690,8 +714,8 @@ def BFACF(array_dict, timesteps, aimed_range):
                                             projections_11m1=projections_11m1,
                                             projections_1m1m1=projections_1m1m1)
     
-    # old_entanglement_energy = long_range_entanglement(init_array)
-    old_entanglement_energy = average_curvature(init_array)
+    old_entanglement_energy = long_range_entanglement(init_array)
+    # old_entanglement_energy = average_curvature(init_array)
     
     old_energy = alpha * old_entanglement_energy + (1-alpha) * old_writhe_energy
 
@@ -757,8 +781,8 @@ def BFACF(array_dict, timesteps, aimed_range):
                                                     projections_11m1=projections_11m1,
                                                     projections_1m1m1=projections_1m1m1)
             
-            # new_entanglement_energy = long_range_entanglement(update_array)
-            new_entanglement_energy = average_curvature(update_array)
+            new_entanglement_energy = long_range_entanglement(update_array)
+            # new_entanglement_energy = average_curvature(update_array)
 
             new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
             
@@ -841,8 +865,8 @@ def pivot(array_dict, timesteps, knot, aimed_range):
                                             projections_11m1=projections_11m1,
                                             projections_1m1m1=projections_1m1m1)
     
-    # old_entanglement_energy = long_range_entanglement(init_array)
-    old_entanglement_energy = average_curvature(init_array)
+    old_entanglement_energy = long_range_entanglement(init_array)
+    # old_entanglement_energy = average_curvature(init_array)
 
     phase = 1
     alpha = 1
@@ -929,8 +953,8 @@ def pivot(array_dict, timesteps, knot, aimed_range):
                                                     projections_11m1=projections_11m1,
                                                     projections_1m1m1=projections_1m1m1)
             
-            # new_entanglement_energy = long_range_entanglement(update_dict)
-            new_entanglement_energy = average_curvature(update_dict)
+            new_entanglement_energy = long_range_entanglement(update_dict)
+            # new_entanglement_energy = average_curvature(update_dict)
             new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
             
             # if new_writhe_energy < target_wr:
@@ -960,67 +984,69 @@ def pivot(array_dict, timesteps, knot, aimed_range):
 
     return array_dict
 
-def bias_energy(ent, wr, target_ent, target_wr, k_ent=1.0, k_wr=1.0):
-    """
-    Harmonic bias centered on targets
-    """
-    return k_ent * (ent - target_ent)**2 + k_wr * (wr - target_wr)**2
+#### Below is attempt to compactify the above code ####
+
+# def bias_energy(ent, wr, target_ent, target_wr, k_ent=1.0, k_wr=1.0):
+#     """
+#     Harmonic bias centered on targets
+#     """
+#     return k_ent * (ent - target_ent)**2 + k_wr * (wr - target_wr)**2
 
 
-def metropolis_biased_accept(old_ent, old_wr, new_ent, new_wr,
-                             target_ent, target_wr,
-                             k_ent=1.0, k_wr=1.0, temp=1e-3):
-    """
-    Compute biased energies and perform a Metropolis accept/reject.
-    """
-    old_E = bias_energy(old_ent, old_wr, target_ent, target_wr, k_ent, k_wr)
-    new_E = bias_energy(new_ent, new_wr, target_ent, target_wr, k_ent, k_wr)
+# def metropolis_biased_accept(old_ent, old_wr, new_ent, new_wr,
+#                              target_ent, target_wr,
+#                              k_ent=1.0, k_wr=1.0, temp=1e-3):
+#     """
+#     Compute biased energies and perform a Metropolis accept/reject.
+#     """
+#     old_E = bias_energy(old_ent, old_wr, target_ent, target_wr, k_ent, k_wr)
+#     new_E = bias_energy(new_ent, new_wr, target_ent, target_wr, k_ent, k_wr)
 
-    dE = new_E - old_E
-    if dE <= 0:
-        return True, new_E, old_E
-    else:
-        if temp <= 0:
-            return False, new_E, old_E
-        p = math.exp(-dE / temp)
-        if random.random() < p:
-            return True, new_E, old_E
-        else:
-            return False, new_E, old_E
+#     dE = new_E - old_E
+#     if dE <= 0:
+#         return True, new_E, old_E
+#     else:
+#         if temp <= 0:
+#             return False, new_E, old_E
+#         p = math.exp(-dE / temp)
+#         if random.random() < p:
+#             return True, new_E, old_E
+#         else:
+#             return False, new_E, old_E
 
-def dict_to_dense(array_dict):
-    """
-    Turn dict into dense numpy array.
-    """
-    max_x = max(p[0] for p in array_dict) + 1
-    max_y = max(p[1] for p in array_dict) + 1
-    max_z = max(p[2] for p in array_dict) + 1
-    arr = np.zeros((max_x, max_y, max_z), dtype=np.float64)
-    for (x, y, z), val in array_dict.items():
-        arr[x, y, z] = val
-    return arr
+# def dict_to_dense(array_dict):
+#     """
+#     Turn dict into dense numpy array.
+#     """
+#     max_x = max(p[0] for p in array_dict) + 1
+#     max_y = max(p[1] for p in array_dict) + 1
+#     max_z = max(p[2] for p in array_dict) + 1
+#     arr = np.zeros((max_x, max_y, max_z), dtype=np.float64)
+#     for (x, y, z), val in array_dict.items():
+#         arr[x, y, z] = val
+#     return arr
 
-def compute_observables(update_dict, alpha, no_points):
+# def compute_observables(update_dict, alpha, no_points):
 
-    update2array = dict_to_dense(update_dict)
+#     update2array = dict_to_dense(update_dict)
 
-    projections_111 = points_on_axis(update2array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
-    projections_1m11 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
-    projections_11m1 = points_on_axis(update2array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
-    projections_1m1m1 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
+#     projections_111 = points_on_axis(update2array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
+#     projections_1m11 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
+#     projections_11m1 = points_on_axis(update2array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
+#     projections_1m1m1 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
 
-    new_writhe_energy = lattice_writhe_Cimasoni(update2array, no_points,
-                                            projections_111=projections_111,
-                                            projections_1m11=projections_1m11,
-                                            projections_11m1=projections_11m1,
-                                            projections_1m1m1=projections_1m1m1)
+#     new_writhe_energy = lattice_writhe_Cimasoni(update2array, no_points,
+#                                             projections_111=projections_111,
+#                                             projections_1m11=projections_1m11,
+#                                             projections_11m1=projections_11m1,
+#                                             projections_1m1m1=projections_1m1m1)
     
-    # new_entanglement_energy = long_range_entanglement(update_dict)
-    new_entanglement_energy = average_curvature(update_dict)
-    new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
+#     # new_entanglement_energy = long_range_entanglement(update_dict)
+#     new_entanglement_energy = average_curvature(update_dict)
+#     new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
 
-    return new_energy
+#     return new_energy
 
-def bias_energy(wr, ent, target_wr, target_ent, sigma_wr, sigma_ent):
-    return 0.5 * ((wr - target_wr)**2 / sigma_wr**2 
-                  + (ent - target_ent)**2 / sigma_ent**2)
+# def bias_energy(wr, ent, target_wr, target_ent, sigma_wr, sigma_ent):
+#     return 0.5 * ((wr - target_wr)**2 / sigma_wr**2 
+#                   + (ent - target_ent)**2 / sigma_ent**2)

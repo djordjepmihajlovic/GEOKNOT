@@ -42,8 +42,7 @@ def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins):
     # 5.) writhe_range and entang_range should be passed as arguments to the sampling function.
 
     writhe_range = (0, 25)
-    # entang_range = (750, 2750) # maybe make convergence slightly faster
-    entang_range = (0.2, 0.9)
+    entang_range = (750, 2750) # maybe make convergence slightly faster
 
     writhe_edges = np.linspace(*writhe_range, writhe_bins + 1)
     entang_edges = np.linspace(*entang_range, entang_bins + 1)
@@ -64,7 +63,7 @@ def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins):
             print(f"Sampling writhe {writhe_ranges[i]} and entanglement {entang_ranges[j]}")
             # check if file already exists
             
-            if os.path.exists(f'samples/tk_cr/tk_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{(entang_ranges[j][0]+entang_ranges[j][1])/2}.csv'):
+            if os.path.exists(f'samples/{knot_type}_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv'):
                 print(f"File already exists for writhe {writhe_ranges[i]} and entanglement {entang_ranges[j]}, skipping...")
                 continue
 
@@ -84,7 +83,8 @@ def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins):
                 print(f"writhe: {proposed_writhe}, range: {writhe_ranges[i]}")
                 print(f"entanglement: {proposed_entang}, range: {entang_ranges[j]}")
 
-                if topo == True: # ensure topology is 0_1 (should write a script that automates things)
+
+                if topo == True: # ensure topology is consistent
                     current_writhe = proposed_writhe
                     current_entang = proposed_entang
                     if min(writhe_ranges[i])<=current_writhe<=max(writhe_ranges[i]):
@@ -126,9 +126,9 @@ def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins):
                             new_coord_w = [(w[idx],) + coord for idx, coord in enumerate(new_coord)]
 
                             # included int(...) for entanglement 
-                            np.savetxt(f'samples/tk_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{(entang_ranges[j][0]+entang_ranges[j][1])/2}.csv', new_coord_w, delimiter=",", fmt='%.5f')
-                            sampled_states.append([partition, int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), (entang_ranges[j][0]+entang_ranges[j][1])/2])
-                            instance_per_range.append([int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), (entang_ranges[j][0]+entang_ranges[j][1])/2, instance])
+                            np.savetxt(f'samples/{knot_type}_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv', new_coord_w, delimiter=",", fmt='%.5f')
+                            sampled_states.append([partition, int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2)])
+                            instance_per_range.append([int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2), instance])
             
     return sampled_states, instance_per_range
 
@@ -225,8 +225,8 @@ def main():
                 if val != 0:
                     entang_dict[iter.multi_index] = val.item()
 
-            # entang = long_range_entanglement(entang_dict)
-            entang = average_curvature(entang_dict)
+            entang = long_range_entanglement(entang_dict)
+            # entang = average_curvature(entang_dict)
 
             if entang > max_entang:
                 max_entang = entang

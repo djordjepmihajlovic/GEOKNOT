@@ -345,31 +345,31 @@ def k3_1_initialization_100(array):
     Initializes a 3_1 in state space (size 100).
     '''
 
-    draw_line_xy(array, 6, 51, 49, 51, 38, 100) # length = 9
-    draw_line_xy(array, 6, 50, 37, 44, 37, 100) # length = 6
+    draw_line_xy(array, 56, 51, 49, 51, 38, 100) # length = 9
+    draw_line_xy(array, 56, 50, 37, 44, 37, 100) # length = 6
 
-    array[5][37][43] = array[4][37][43] = array[3][37][43] = 1
+    array[55][37][43] = array[54][37][43] = array[53][37][43] = 1
 
-    draw_line_xy(array, 2, 43, 38, 43, 45, 100) # length = 7
+    draw_line_xy(array, 52, 43, 38, 43, 45, 100) # length = 7
 
-    array[5][46][43] = array[4][46][43] = array[3][46][43] = 1
+    array[55][46][43] = array[54][46][43] = array[53][46][43] = 1
 
-    draw_line_xy(array, 6, 43, 47, 43, 56, 100) # length = 5
-    draw_line_xy(array, 6, 44, 57, 52, 57, 100) # length = 8
-    draw_line_xy(array, 6, 53, 56, 53, 41, 100) # length = 11
+    draw_line_xy(array, 56, 43, 47, 43, 56, 100) # length = 5
+    draw_line_xy(array, 56, 44, 57, 52, 57, 100) # length = 8
+    draw_line_xy(array, 56, 53, 56, 53, 41, 100) # length = 11
 
-    array[5][40][53] = 1 # 5
+    array[55][40][53] = 1 # 5
 
-    draw_line_xy(array, 4, 52, 40, 41, 40, 100) # length = 11
-    draw_line_xy(array, 4, 40, 41, 40, 49, 100) # length = 8
-    draw_line_xy(array, 4, 41, 50, 49, 50, 100) # length = 8
+    draw_line_xy(array, 54, 52, 40, 41, 40, 100) # length = 11
+    draw_line_xy(array, 54, 40, 41, 40, 49, 100) # length = 8
+    draw_line_xy(array, 54, 41, 50, 49, 50, 100) # length = 8
 
     # total length = 81
 
-    array[5][50][50] = 1    
+    array[55][50][50] = 1    
 
     print(len(np.argwhere(array == 1)))
-
+    
     return array
 
 def k3_1_initialization_L(array):

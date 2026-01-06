@@ -3,8 +3,12 @@
 GEOKNOT is a program to sample chosen geometries for topological objects (specifically knots).
 
 * Quick start guide:
+To run the package you must first build the required conda enviornment, to do so (assuming you already have conda installed), simply run
+``` conda env create --file=requirements.yml ```
+Once the enviornment is built run 
+``` conda activate geoknot ```
 
- We use writhe and long range entanglement as the features being sampled
+We use writhe and long range entanglement as the features being sampled
 ``` python knot_sampler.py -sub 2 -no 1 -np 1 -k 0_1 -distr [(0, 3), (500, 1000)] -plot False```
 - sub (Int): Number of sub-samples per process (divisions of the specified range for features such as writhe and entanglement).
 - no (Int): Number of samples at given range (number of samples for each range of features such as writhe and entanglement).

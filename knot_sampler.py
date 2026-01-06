@@ -8,6 +8,7 @@ import os
 import numpy as np
 import csv
 from knot_invs import Q_invariant
+from pathlib import Path
 
 '''
 Its always useful to write down ideas:)
@@ -33,13 +34,14 @@ def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins, plot):
     # pivot = x
     # BFACF = x
 
+    # make folder for saving:
+    sample_dir = Path(f'samples/{knot_type}')
+    sample_dir.mkdir(parents=True, exist_ok=True)
+
+    initial_length = len(oriented)
+
     pivot_lag = 5000
     BFACF_lag = 10000
-
-    # 2.) Implement dynamical logic to switch between pivot and BFACF based on the current state.
-    # 3.) Implement saving knot as correct type if generated.
-    # 4.) Implement reduction in writhe or entanglement if value is above the aimed range.
-    # 5.) writhe_range and entang_range should be passed as arguments to the sampling function.
 
     writhe_range = (0, 25)
     entang_range = (750, 2750) # maybe make convergence slightly faster
@@ -90,8 +92,6 @@ def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins, plot):
                     if min(writhe_ranges[i])<=current_writhe<=max(writhe_ranges[i]):
                         if min(entang_ranges[j])<=current_entang<=max(entang_ranges[j]):
                             # sampled_states.append(proposed_state)
-                            completed = True
-                            print(f"Sampled state with writhe {current_writhe} and entanglement {current_entang} in bin [{writhe_ranges[i]}, {entang_ranges[j]}]")
 
                             min_x = min(p[0] for p in proposed_state)
                             min_y = min(p[1] for p in proposed_state)
@@ -125,13 +125,20 @@ def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins, plot):
                             w = [wx[0] for wx in elements]
                             new_coord_w = [(w[idx],) + coord for idx, coord in enumerate(new_coord)]
 
-                            if plot == True:
-                                plot_3d_line(new_coord_w)
-
                             # included int(...) for entanglement 
-                            np.savetxt(f'samples/{knot_type}/{knot_type}_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv', new_coord_w, delimiter=",", fmt='%.5f')
-                            sampled_states.append([partition, int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2)])
-                            instance_per_range.append([int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2), instance])
+                            state = {tuple(coord[1:]): coord[0] for coord in read_coord(new_coord_w)}
+                            topo = Q_invariant(state, 'Uq(sl2)').alexander_polynomial_hash(knot_type, joggle=False) 
+
+                            if topo == True and len(new_coord_w) == initial_length:
+                                if plot == True:
+                                    plot_3d_line(new_coord_w)
+
+                                'Final topology check after jiggling coords off lattice.'
+                                completed = True
+                                print(f"Sampled state with writhe {current_writhe} and entanglement {current_entang} in bin [{writhe_ranges[i]}, {entang_ranges[j]}]")
+                                np.savetxt(f'samples/{knot_type}/{knot_type}_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv', new_coord_w, delimiter=",", fmt='%.5f')
+                                sampled_states.append([partition, int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2)])
+                                instance_per_range.append([int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2), instance])
             
     return sampled_states, instance_per_range
 
@@ -182,7 +189,7 @@ def main():
     sampled_results = [r[0] for r in results]          # list of all sampled states
     times = [r[1] for r in results]
 
-    with open('samples/time_data.csv', mode='w', newline='') as file:
+    with open(f'samples/{knot_type}/time_data.csv', mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(['Writhe Bin', 'Entanglement Bin', 'Instances'])  # Header row
         for time_entry in times:
@@ -200,7 +207,7 @@ def main():
         for j in i:
 
             print(f'Checking: {j[0]},{j[1]},{j[2]}')
-            file = np.loadtxt(f'samples/tk_{j[0]}_{j[1]}_{j[2]}.csv', delimiter=',', dtype=int)
+            file = np.loadtxt(f'samples/{knot_type}/{knot_type}_{j[0]}_{j[1]}_{j[2]}.csv', delimiter=',', dtype=int)
             load = read_array(file)
             array = load.copy() # this will load an integer rounded version
             no_points = len(np.argwhere(array)>0)
@@ -247,21 +254,21 @@ def main():
     plt.xlabel('Writhe')
     plt.ylabel('Entanglement')
     plt.title(f'Writhe vs Entanglement Heatmap for non-trivial knots')
-    plt.savefig(f'samples/writhe_entang_heatmap_tk.png')
+    plt.savefig(f'samples/writhe_entang_heatmap_{knot_type}.png')
     plt.clf()
 
     plt.hist(writhe_dist, bins=100, density=True, alpha=0.5, label='Writhe Distribution')
     plt.xlabel('Writhe')
     plt.ylabel('Density')
     plt.title(f'Writhe Distribution for non-trivial knots')
-    plt.savefig(f'samples/writhe_dist_samples_tk.png')
+    plt.savefig(f'samples/writhe_dist_samples_{knot_type}.png')
     plt.clf()
     
     plt.hist(entang_dist, bins=100, density=True, alpha=0.5, label='Entanglement Distribution')
     plt.xlabel('Entanglement')
     plt.ylabel('Density')
     plt.title(f'Entanglement Distribution for non-trivial knots')
-    plt.savefig(f'samples/entang_dist_samples_tk.png')
+    plt.savefig(f'samples/entang_dist_samples_{knot_type}.png')
     plt.clf()
 
 par = ArgumentParser()

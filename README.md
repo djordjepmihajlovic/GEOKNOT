@@ -14,8 +14,9 @@ We use writhe and long range entanglement as the features being sampled
 - no (Int): Number of samples at given range (number of samples for each range of features such as writhe and entanglement).
 - np (Int): Number of processes. Useful for using multiple cores to sample a large dataset across chosen geometries.
 - k (Str): The knot type to instantiate, currently 0_1, ..., 5_2 are implemented, however any starting (lattice) configuration can be loaded.
-- geo (List): A list of targetted geometric properties for the entended curve. For speed of convergence/sampling, one should use a broader range of accepted values.
+- distr (List): A list of targetted geometric properties for the entended curve. For speed of convergence/sampling, one should use a broader range of accepted values.
 - plot (Bool): Plot the desired embedding.
+- smooth (Bool): Sample smooth knots (completely off lattice). If set to false knots are sampled on a lattice with a small jitter (required for Alexander determinant computation).
 
 * Note:
 ``` python knot_sampler.py -sub 1 -no 1 -np 1 -k 0_1 -distr [(0, 3), (500, 1000)] -plot True```

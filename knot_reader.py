@@ -80,6 +80,5 @@ def check_constraints(file_path, knot_type):
     else:
         return False
     
-# check_constraints('/Users/s1910360/Desktop/3_1/3_1_19_16_2321.csv', '3_1')
-# read_and_concatenate('/Users/s1910360/Desktop/0_1', '0_1')
-# read_and_concatenate('/Users/s1910360/Desktop/3_1', '3_1')
+# read_and_concatenate('/Users/s1910360/Desktop/0_1_2', '0_1')
+# read_and_concatenate('/Users/s1910360/Desktop/3_1_2', '3_1')

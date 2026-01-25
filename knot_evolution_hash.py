@@ -323,6 +323,43 @@ def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshol
                     score += 1
     return score
 
+# def long_range_entanglement(array_dict, distance_target=5.0, sigma_space=1.5, sigma_seq=0.2, lambda_orientation=1.0):
+#     """
+#     Measures global, long-range entanglement in a cyclic configuration.
+#     """
+
+#     coords = list(array_dict.keys())
+#     seq = [array_dict[c] for c in coords]
+#     total = len(seq)
+
+#     score = 0.0
+
+#     for i in range(total):
+#         for j in range(i + 1, total):
+
+#             raw = abs(seq[i] - seq[j])
+#             seq_dist = min(raw, total - raw)
+#             norm_seq = seq_dist / (total / 2)
+
+#             seq_weight = np.exp(-((norm_seq - 1.0) ** 2) / sigma_seq)
+
+#             r = np.linalg.norm(np.array(coords[i]) - np.array(coords[j]))
+#             spatial_weight = np.exp(-((r - distance_target) ** 2) / sigma_space)
+
+#             ti = np.array(coords[(i + 1) % total], dtype=float) - np.array(coords[i], dtype=float)
+#             tj = np.array(coords[(j + 1) % total], dtype=float) - np.array(coords[j], dtype=float)
+
+#             ti /= np.linalg.norm(ti)
+#             tj /= np.linalg.norm(tj)
+
+#             orientation_weight = 1.0 - abs(np.dot(ti, tj))
+
+#             score += seq_weight * spatial_weight * (
+#                 1.0 + lambda_orientation * orientation_weight
+#             )
+
+    return score
+
 
 def average_curvature(array_dict):
     '''

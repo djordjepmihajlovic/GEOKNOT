@@ -44,7 +44,8 @@ def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins, plot):
     BFACF_lag = 10000
 
     writhe_range = (0, 25)
-    entang_range = (750, 2750) # maybe make convergence slightly faster
+    entang_range = (0, 1500)
+    #entang_range = (750, 2750) # maybe make convergence slightly faster
 
     writhe_edges = np.linspace(*writhe_range, writhe_bins + 1)
     entang_edges = np.linspace(*entang_range, entang_bins + 1)
@@ -86,62 +87,62 @@ def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins, plot):
 
                 current_writhe = proposed_writhe
                 current_entang = proposed_entang
-                if min(writhe_ranges[i])<=current_writhe<=max(writhe_ranges[i]):
-                    if min(entang_ranges[j])<=current_entang<=max(entang_ranges[j]):
+                # if min(writhe_ranges[i])<=current_writhe<=max(writhe_ranges[i]):
+                #     if min(entang_ranges[j])<=current_entang<=max(entang_ranges[j]):
                         # sampled_states.append(proposed_state)
 
-                        min_x = min(p[0] for p in proposed_state)
-                        min_y = min(p[1] for p in proposed_state)
-                        min_z = min(p[2] for p in proposed_state)
+                min_x = min(p[0] for p in proposed_state)
+                min_y = min(p[1] for p in proposed_state)
+                min_z = min(p[2] for p in proposed_state)
 
-                        max_x = max(p[0] for p in proposed_state) + 1
-                        max_y = max(p[1] for p in proposed_state) + 1
-                        max_z = max(p[2] for p in proposed_state) + 1
+                max_x = max(p[0] for p in proposed_state) + 1
+                max_y = max(p[1] for p in proposed_state) + 1
+                max_z = max(p[2] for p in proposed_state) + 1
 
-                        offset_x = abs(min_x) if min_x < 0 else 0
-                        offset_y = abs(min_y) if min_y < 0 else 0
-                        offset_z = abs(min_z) if min_z < 0 else 0
+                offset_x = abs(min_x) if min_x < 0 else 0
+                offset_y = abs(min_y) if min_y < 0 else 0
+                offset_z = abs(min_z) if min_z < 0 else 0
 
-                        # array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
-                        array = np.zeros((max_x + offset_x, max_y + offset_y, max_z + offset_z), dtype=np.float64)
-                        for (x, y, z), val in proposed_state.items():
-                            # array[x, y, z] = val
-                            array[x + offset_x, y + offset_y, z + offset_z] = val
+                # array = np.zeros((max_x, max_y, max_z), dtype=np.float64)
+                array = np.zeros((max_x + offset_x, max_y + offset_y, max_z + offset_z), dtype=np.float64)
+                for (x, y, z), val in proposed_state.items():
+                    # array[x, y, z] = val
+                    array[x + offset_x, y + offset_y, z + offset_z] = val
 
-                        coords = np.argwhere(array>0)
-                        coord_dat = [(array[p[0], p[1], p[2]], p[0], p[1], p[2]) for p in coords]
+                coords = np.argwhere(array>0)
+                coord_dat = [(array[p[0], p[1], p[2]], p[0], p[1], p[2]) for p in coords]
 
-                        elements = sorted(coord_dat, key=lambda x: x[0])
-                        
-                        joggle_scale = 1
-                        np.random.seed(42)
-                        elements_jiggled = [np.array([el[1:4] for el in elements], dtype=float) +
-                        np.random.normal(scale=joggle_scale, size=(len(elements), 3))]
+                elements = sorted(coord_dat, key=lambda x: x[0])
+                
+                joggle_scale = 1
+                np.random.seed(42)
+                elements_jiggled = [np.array([el[1:4] for el in elements], dtype=float) +
+                np.random.normal(scale=joggle_scale, size=(len(elements), 3))]
 
-                        new_coord = [tuple(row) for row in elements_jiggled[0]]
-                        w = [wx[0] for wx in elements]
-                        new_coord_w = [(w[idx],) + coord for idx, coord in enumerate(new_coord)]
+                new_coord = [tuple(row) for row in elements_jiggled[0]]
+                w = [wx[0] for wx in elements]
+                new_coord_w = [(w[idx],) + coord for idx, coord in enumerate(new_coord)]
 
-                        # included int(...) for entanglement 
+                # included int(...) for entanglement 
 
-                        ##########################################################
-                        state = {tuple(coord[1:]): coord[0] for coord in read_coord(new_coord_w)}
-                        topo = Q_invariant(state, 'Uq(sl2)').alexander_polynomial_hash(knot_type, joggle=False) 
+                ##########################################################
+                state = {tuple(coord[1:]): coord[0] for coord in read_coord(new_coord_w)}
+                topo = Q_invariant(state, 'Uq(sl2)').alexander_polynomial_hash(knot_type, joggle=False) 
 
-                        if topo == True and len(new_coord_w) == initial_length:
-                        
-                        ###########################################################
+                if topo == True and len(new_coord_w) == initial_length:
+                
+                ###########################################################
 
-                            if plot == True:
-                                plot_3d_line(new_coord_w)
+                    if plot == True:
+                        plot_3d_line(new_coord_w)
 
-                            'Final topology check after jiggling coords off lattice.'
-                            completed = True
-                            print(f"Sampled state with writhe {current_writhe} and entanglement {current_entang} in bin [{writhe_ranges[i]}, {entang_ranges[j]}]")
-                            np.savetxt(f'samples/{knot_type}/{knot_type}_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv', new_coord_w, delimiter=",", fmt='%.5f')
-                            sampled_states.append([partition, int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2)])
-                            instance_per_range.append([int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2), instance])
-            
+                    'Final topology check after jiggling coords off lattice.'
+                    completed = True
+                    print(f"Sampled state with writhe {current_writhe} and entanglement {current_entang} in bin [{writhe_ranges[i]}, {entang_ranges[j]}]")
+                    np.savetxt(f'samples/{knot_type}/{knot_type}_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv', new_coord_w, delimiter=",", fmt='%.5f')
+                    sampled_states.append([partition, int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2)])
+                    instance_per_range.append([int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2), instance])
+    
     return sampled_states, instance_per_range
 
 def process_wang_landau(args):

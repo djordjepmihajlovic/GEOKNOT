@@ -449,7 +449,7 @@ def metropolis_acceptance(old_energy, new_energy, temperature):
     else:
 
         ### Want to implement a dynamically changing temperature
-        acceptance_probability = np.exp((new_energy - old_energy) / temperature)
+        acceptance_probability = np.exp((new_energy - old_energy) / 10)
         return np.random.rand() < acceptance_probability
         # return False
 

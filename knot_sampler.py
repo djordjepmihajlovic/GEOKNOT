@@ -142,7 +142,7 @@ def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins, plot):
                     np.savetxt(f'samples/{knot_type}/{knot_type}_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv', new_coord_w, delimiter=",", fmt='%.5f')
                     sampled_states.append([partition, int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2)])
                     instance_per_range.append([int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2), instance])
-    
+            
     return sampled_states, instance_per_range
 
 def process_wang_landau(args):

@@ -447,12 +447,9 @@ def metropolis_acceptance(old_energy, new_energy, temperature):
     if new_energy > old_energy: # (new writhe is larger)
         return True
     else:
-
         ### Want to implement a dynamically changing temperature
         acceptance_probability = np.exp((new_energy - old_energy) / temperature)
-        # return np.random.rand() < acceptance_probability
-        return True
-        # return False
+        return np.random.rand() < acceptance_probability
 
 
 def points_on_axis(array, axis):

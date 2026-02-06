@@ -20,12 +20,6 @@ def read_coord(knot):
 
     return coord_list
 
-# Writhe matrix; Klenin et.al formulation
-# im = lattice_writhe_Klenin(read_coord(knot))
-# print(np.sum(im))
-# plt.imshow(im)
-# plt.colorbar()
-
 def map(knot):
     '''
     Computes writhe using Klenin formulation.

@@ -5,19 +5,21 @@ import csv
 from knot_invs import Q_invariant
 
 def read_array(knot):
+    "Read in knot on array as lattice - notice this might change topology(!)"
     state = np.zeros((100, 100, 100), dtype=np.int64)
     for i in knot:
         state[round(i[1])][round(i[2])][round(i[3])] = i[0] # snap to integer values 
     return state
 
 def read_coord(knot):
+    "Read coord in coord state (pos, x, y, z) - pos is position in chain for tracking orientation"
     coord_list = [(float(i[0]), float( i[1]), float(i[2]), float(i[3])) for i in knot]
     coord_list = sorted(coord_list, key=lambda x: x[0])
     return coord_list
 
 def read_and_concatenate(knot_path, knot_type):
     """
-    Read all {knot}_*.csv files from knot_path and concatenate into one list.
+    Read all {knot}_*.csv files from knot_path and concatenate into one list. Used for building dataset from sampled knots.
     """
     broken = 0
     total = 0
@@ -46,12 +48,6 @@ def read_and_concatenate(knot_path, knot_type):
     print(f'Number of knots: {total}.')
     print(f'Number of broken knots: {broken}.')
     print(f'Number of valid knots: {total-broken}.')
-
-    # with open(f'{knot_type}.csv', 'w', newline='') as f:
-    #     writer = csv.writer(f)
-    #     writer.writerow(header[1:])
-    #     for row in all_rows[1:]:
-    #         writer.writerow(row[1:])
     
     with open(f'{knot_type}.csv', 'w', newline='') as f:
         writer = csv.writer(f)
@@ -60,25 +56,20 @@ def read_and_concatenate(knot_path, knot_type):
 
     return all_rows
 
-def check_constraints(file_path, knot_type):
+def check_constraints(knot, knot_type):
     """
-    Check if file satisfies topology and length constraints.
+    Check if knot from a file satisfies topology and length constraints.
     """
-    knot = np.loadtxt(file_path, delimiter=',')
-
-    state = {tuple(coord[1:]): coord[0] for coord in read_coord(knot)}
-
-    # need to check that each file is length 100
-    # need to check that each file is of the required topology.
+    orientation = np.arange(0, len(knot))
+    coords = [(i[0], i[1], i[2]) for i in knot]
+    state = {tuple(coord[0:]): orientation[idx] for idx, coord in enumerate(coords)}
     topo = Q_invariant(state, 'Uq(sl2)').alexander_polynomial_hash(knot_type, joggle=False) 
     length = len(state)
-    print(length)
 
     if topo and length == 100:
+        print('req. satisfied')
         return True
 
     else:
+        print('req. failed')
         return False
-    
-# read_and_concatenate('/Users/s1910360/Desktop/0_1_2', '0_1')
-# read_and_concatenate('/Users/s1910360/Desktop/3_1_2', '3_1')

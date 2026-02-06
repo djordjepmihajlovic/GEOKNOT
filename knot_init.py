@@ -81,10 +81,11 @@ def plot_3d_line(coord_list):
     Plots a 3D line and scatter plot based on a list of tuples (val, x, y, z).
     """
     # Extract values and coordinates
-    values = [item[0] for item in coord_list]
-    x = [item[1] for item in coord_list]
-    y = [item[2] for item in coord_list]
-    z = [item[3] for item in coord_list]
+    #values = [item[0] for item in coord_list]
+    values = np.arange(0, len(coord_list))
+    x = [item[0] for item in coord_list]
+    y = [item[1] for item in coord_list]
+    z = [item[2] for item in coord_list]
 
     # Normalize values for coloring
     norm = mcolors.Normalize(vmin=min(values), vmax=max(values))
@@ -100,14 +101,7 @@ def plot_3d_line(coord_list):
 
     # Scatter with colors based on values
     ax.scatter(x, y, z, c=values, cmap=cmap, s=10)
-
-    # Set axis limits (optional, adjust as needed)
-    # ax.set_xlim([min(x), max(x)])
-    # ax.set_ylim([min(y), max(y)])
-    # ax.set_zlim([min(z), max(z)])
-
     plt.show()
-    plt.clf()
         
 
 def draw_line_xy(grid, z, x1, y1, x2, y2, size):
@@ -194,27 +188,6 @@ def draw_line_xyz(grid, x1, y1, z1, x2, y2, z2, size):
     if 0 <= x2 < size and 0 <= y2 < size and 0 <= z2 < size:
         grid[z2, y2, x2] = 1
 
-def k0_1_initialization(array):
-    '''
-    Initializes an unknot on the boundary of the state space i.e.
-    '''
-
-    length = len(array[0])
-    for i in prange(36, length - 24):
-        for j in prange(36, length - 24):
-            if i == 36 or i == length-25:
-                array[50][i][j] = 1
-
-            if j == 36 or j == length-25:
-
-                array[50][i][j] = 1
-
-    array[50][36][36] = array[50][36][75] = array[50][75][75] = array[50][75][36] = 0
-
-    print(len(np.argwhere(array == 1)))
-
-    return array
-
 def k0_1_initialization_100(array):
     '''
     Initializes an unknot on the boundary of the state space (size 100).
@@ -236,109 +209,6 @@ def k0_1_initialization_100(array):
 
     return array
 
-
-def k0_1_initialization_2(array):
-    '''
-    Initializes an thin unknot on the boundary of the state space i.e.
-    '''
-
-    length = len(array[0])
-    for i in prange(25, length - 24):
-        for j in prange(70, length - 24):
-            if i == 25 or i == length-25:
-                array[4][i][j] = 1
-
-            if j == 70 or j == length-25:
-
-                array[4][i][j] = 1
-
-    array[4][25][75] = array[4][75][70] = array[4][75][75] = array[4][25][70] = 0
-
-    print(len(np.argwhere(array == 1)))
-
-    return array
-
-def k0_1_initialization_3(array):
-    '''
-    Writhe = 1, 0_1
-    '''
-
-    draw_line_xy(array, 6, 50, 47, 50, 32, 100)
-    draw_line_xy(array, 5, 49, 31, 21, 48, 100)
-    draw_line_xy(array, 6, 20, 47, 20, 32, 100)
-    draw_line_xy(array, 7, 21, 31, 49, 48, 100)
-
-    return array
-
-def k0_1_initialization_4(array):  
-    '''
-    Writhe = 1, 0_1, wide
-    '''
-
-    draw_line_xyz(array, 50, 47, 6, 50, 32, 6, 100)
-    draw_line_xyz(array, 50, 32, 6, 50, 32, 20, 100)
-    draw_line_xyz(array, 49, 31, 21, 21, 48, 21, 100)
-    draw_line_xyz(array, 20, 47, 6, 20, 32, 6, 100)
-    draw_line_xyz(array, 21, 31, 7, 49, 48, 7, 100)
-    draw_line_xyz(array, 21, 47, 6, 21, 47, 20, 100)
-
-
-    plot_3d(array)
-    
-
-    return array
-
-def k0_1_initialization_L(array):
-    '''
-    Initializes an unknot on the boundary of the state space i.e.
-    '''
-
-    length = len(array[0])
-    for i in prange(25, length - 24):
-        for j in prange(25, length - 24):
-            if i == 25 or i == length-25:
-                array[50][i][j] = 1
-
-            if j == 25 or j == length-25:
-
-                array[50][i][j] = 1
-
-    array[50][25][25] = array[50][25][75] = array[50][75][75] = array[50][75][25] = 0
-
-    print(len(np.argwhere(array == 1)))
-    plot_3d(array)
-
-    return array
-
-def k3_1_initialization(array):
-    '''
-    Initializes a 3_1 in state space
-    '''
-
-    draw_line_xy(array, 6, 51, 49, 51, 38, 100) # 6 
-    draw_line_xy(array, 6, 50, 37, 44, 37, 100) # 6
-
-    array[5][37][43] = array[4][37][43] = array[3][37][43] = 1
-
-    draw_line_xy(array, 2, 43, 38, 43, 45, 100) # 2
-
-    array[5][46][43] = array[4][46][43] = array[3][46][43] = 1
-
-    draw_line_xy(array, 6, 43, 47, 43, 52, 100) # 6 
-    draw_line_xy(array, 6, 44, 53, 52, 53, 100) # 6
-    draw_line_xy(array, 6, 53, 52, 53, 41, 100) # 6
-
-    array[5][40][53] = 1 # 5
-
-    draw_line_xy(array, 4, 52, 40, 41, 40, 100) # 4 
-    draw_line_xy(array, 4, 40, 41, 40, 49, 100) # 4
-    draw_line_xy(array, 4, 41, 50, 49, 50, 100) # 4
-
-    array[5][50][50] = 1    
-
-    print(len(np.argwhere(array == 1)))
-
-    return array
 
 def k3_1_initialization_100(array):
     '''
@@ -371,56 +241,3 @@ def k3_1_initialization_100(array):
     print(len(np.argwhere(array == 1)))
     
     return array
-
-def k3_1_initialization_L(array):
-    '''
-    Initializes a 3_1 in state space
-    '''
-
-    draw_line_xy(array, 50, 50, 55, 50, 33, 100) # 50
-    draw_line_xy(array, 50, 49, 32, 38, 32, 100) # 50
-
-    array[49][32][37] = array[48][32][37] = array[47][32][37] = 1
-
-    draw_line_xy(array, 46, 37, 33, 37, 45, 100) # 46
-
-    array[49][46][37] = array[48][46][37] = array[47][46][37] = 1
-
-    draw_line_xy(array, 50, 37, 47, 37, 57, 100) # 50
-    draw_line_xy(array, 50, 38, 58, 52, 58, 100) # 50
-    draw_line_xy(array, 50, 53, 57, 53, 41, 100) # 50
-
-    array[49][40][53] = 1 # 49
-
-    draw_line_xy(array, 48, 52, 40, 32, 40, 100) # 48
-    draw_line_xy(array, 48, 31, 41, 31, 55, 100) # 48
-    draw_line_xy(array, 48, 32, 56, 49, 56, 100) # 48
-
-    array[49][56][50] = 1 # 49
-
-    print(len(np.argwhere(array == 1)))
-
-    return array
-
-
-def k4_1_initialization(array):
-    '''
-    Initializes a 4_1 in state space
-    '''
-
-    return array
-
-def k5_1_initialization(array):
-    '''
-    Initializes a 5_1 in state space
-    '''
-
-    return array
-
-def k5_2_initialization(array):
-    '''
-    Initializes a 5_2 in state space
-    '''
-
-    return array
-

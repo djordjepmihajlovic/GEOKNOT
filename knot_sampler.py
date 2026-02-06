@@ -36,7 +36,7 @@ def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins, plot):
 
     writhe_range = (0, 25)
     entang_range = (0, 1500)
-    #entang_range = (750, 2750) # maybe make convergence slightly faster
+    # entang_range = (750, 2750) # maybe make convergence slightly faster
 
     writhe_edges = np.linspace(*writhe_range, writhe_bins + 1)
     entang_edges = np.linspace(*entang_range, entang_bins + 1)
@@ -294,5 +294,3 @@ if __name__ == "__main__":
     plot = args.plot
 
     main()
-    
-# Want to transform this code such that we can bias any chosen geometric variable

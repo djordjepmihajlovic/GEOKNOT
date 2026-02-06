@@ -16,13 +16,18 @@ We use writhe and long range entanglement as the features being sampled
 - k (Str): The knot type to instantiate, currently 0_1, ..., 5_2 are implemented, however any starting (lattice) configuration can be loaded.
 - distr (List): A list of targetted geometric properties for the entended curve. For speed of convergence/sampling, one should use a broader range of accepted values.
 - plot (Bool): Plot the desired embedding.
-- smooth (Bool): Sample smooth knots (completely off lattice). If set to false knots are sampled on a lattice with a small jitter (required for Alexander determinant computation).
+- smooth (Bool): Sample smooth knots (completely off lattice). If set to false knots are sampled in \mathbb{R}^3 by applying a perturbation to the original lattice (required for Alexander determinant computation/consistency with previous ML models trained on polygonal knot embeddings).
 
 * Note:
 ``` python knot_sampler.py -sub 1 -no 1 -np 1 -k 0_1 -distr [(0, 3), (500, 1000)] -plot True```
 will therefore sample a single knot with values in the desired distribution range, it can be useful to use the plot flag here.
 
 The above code will therefore sample 8 knots. There are 4 different distributions it will target: as each target distribution is divided into 2 (i.e. low writhe, high writhe & low entanglement, high entanglement), for each of the distributions 2 knots are sampled.
+
+### Knot size ###
+
+
+### Knot size ###
 
 To add your own geometric measurements to be used in the sampler:
 * Requirements: The function must take as input ordered knot coordinates, indicating the relevant orientation.

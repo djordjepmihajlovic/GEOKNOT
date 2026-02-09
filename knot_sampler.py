@@ -10,20 +10,11 @@ import csv
 from knot_invs import Q_invariant
 from pathlib import Path
 
-def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins, plot):
+def _sampling(partition, oriented, knot_type, fn_1, fn_2, bins_1, bins_2, plot):
     '''
     Need a way to randomly implement levels of energy checking to get samples that are highly writhed
     Set no. bins = no. sub_samples, then we want each bin to be filled w exactly one sample.
     '''
-    ### Idea, pass the aimed writhe (range per bin) and entanglement (range per bin) as arguments into BFACF and pivot evolvers.
-    ### This is much more efficient than randomly evolving and hoping for a sample to fall into the right bin.
-    ### Another cool idea could be to enforce change in knot type by selectively evolving components of the knot.
-    ### Say if we get a knot with correct writhe bin but wrong type -> perturb into correct type.
-    ### Would need to find a way of locating the right components to perturb.
-
-    # warm up phase (unconstrained, no energy/geometry states to target)
-    # pivot = x
-    # BFACF = x
 
     # make folder for saving:
     sample_dir = Path(f'samples/{knot_type}')
@@ -34,31 +25,31 @@ def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins, plot):
     pivot_lag = 5000
     BFACF_lag = 10000
 
-    writhe_range = (0, 25)
-    entang_range = (0, 1500)
+    fn1_range = (0, 25)
+    fn2_range = (0, 1500)
     # entang_range = (750, 2750) # maybe make convergence slightly faster
 
-    writhe_edges = np.linspace(*writhe_range, writhe_bins + 1)
-    entang_edges = np.linspace(*entang_range, entang_bins + 1)
-    print(writhe_edges)
+    fn1_edges = np.linspace(*fn1_range, bins_1 + 1)
+    fn2_edges = np.linspace(*fn2_range, bins_2 + 1)
+    print(fn1_edges)
     
-    writhe_ranges = [(writhe_edges[i], writhe_edges[i + 1]) for i in range(len(writhe_edges) - 1)]
-    entang_ranges = [(entang_edges[i], entang_edges[i + 1]) for i in range(len(entang_edges) - 1)]
+    fn1_ranges = [(fn1_edges[i], fn1_edges[i + 1]) for i in range(len(fn1_edges) - 1)]
+    fn2_ranges = [(fn2_edges[i], fn2_edges[i + 1]) for i in range(len(fn2_edges) - 1)]
     
     current_state = oriented
-    current_writhe = 0
-    current_entang = 0
+    current_fn1 = 0
+    current_fn2 = 0
     sampled_states = []
 
     instance_per_range = []
 
-    for i in range(len(writhe_ranges)):
-        for j in range(len(entang_ranges)):
-            print(f"Sampling writhe {writhe_ranges[i]} and entanglement {entang_ranges[j]}")
+    for i in range(len(fn1_ranges)):
+        for j in range(len(fn2_ranges)):
+            print(f"Sampling fn1 {fn1_ranges[i]} and fn2 {fn2_ranges[j]}")
             # check if file already exists
             
-            if os.path.exists(f'samples/{knot_type}/{knot_type}_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv'):
-                print(f"File already exists for writhe {writhe_ranges[i]} and entanglement {entang_ranges[j]}, skipping...")
+            if os.path.exists(f'samples/{knot_type}/{knot_type}_{partition}_{int((fn1_ranges[i][0]+fn1_ranges[i][1])/2)}_{int((fn2_ranges[j][0]+fn2_ranges[j][1])/2)}.csv'):
+                print(f"File already exists for fn1 {fn1_ranges[i]} and fn2 {fn2_ranges[j]}, skipping...")
                 continue
 
             instance = 0
@@ -70,16 +61,16 @@ def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins, plot):
                 ## 1.) Also, we would like to sample across grid of writhe and entanglement bins, the 
                 ## evolution constraints should be dictated by the bin we are sampling.
 
-                proposed_state = pivot(current_state, timesteps=pivot_lag, knot=knot_type, aimed_range=(writhe_ranges[i], entang_ranges[j]))
-                proposed_state, proposed_writhe, proposed_entang = BFACF(proposed_state, timesteps=BFACF_lag, aimed_range=(writhe_ranges[i], entang_ranges[j]))
+                proposed_state = pivot(current_state, timesteps=pivot_lag, knot=knot_type, aimed_range=(fn1_ranges[i], fn2_ranges[j]), fn_1=fn_1, fn_2=fn_2)
+                proposed_state, proposed_fn1, proposed_fn2 = BFACF(proposed_state, timesteps=BFACF_lag, aimed_range=(fn1_ranges[i], fn2_ranges[j]), fn_1=fn_1, fn_2=fn_2)
  
-                print(f"writhe: {proposed_writhe}, range: {writhe_ranges[i]}")
-                print(f"entanglement: {proposed_entang}, range: {entang_ranges[j]}")
+                print(f"function 1: {proposed_fn1}, range: {fn1_ranges[i]}")
+                print(f"entanglement: {proposed_fn2}, range: {fn2_ranges[j]}")
 
-                current_writhe = proposed_writhe
-                current_entang = proposed_entang
-                if min(writhe_ranges[i])<=current_writhe<=max(writhe_ranges[i]):
-                    if min(entang_ranges[j])<=current_entang<=max(entang_ranges[j]):
+                current_fn1 = proposed_fn1
+                current_fn2 = proposed_fn2
+                if min(fn1_ranges[i])<=current_fn1<=max(fn1_ranges[i]):
+                    if min(fn2_ranges[j])<=current_fn2<=max(fn2_ranges[j]):
                         # sampled_states.append(proposed_state)
 
                         min_x = min(p[0] for p in proposed_state)
@@ -129,17 +120,17 @@ def _sampling(partition, oriented, knot_type, writhe_bins, entang_bins, plot):
 
                             'Final topology check after jiggling coords off lattice.'
                             completed = True
-                            print(f"Sampled state with writhe {current_writhe} and entanglement {current_entang} in bin [{writhe_ranges[i]}, {entang_ranges[j]}]")
-                            np.savetxt(f'samples/{knot_type}/{knot_type}_{partition}_{int((writhe_ranges[i][0]+writhe_ranges[i][1])/2)}_{int((entang_ranges[j][0]+entang_ranges[j][1])/2)}.csv', new_coord_w, delimiter=",", fmt='%.5f')
-                            sampled_states.append([partition, int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2)])
-                            instance_per_range.append([int((writhe_ranges[i][0]+writhe_ranges[i][1])/2), int((entang_ranges[j][0]+entang_ranges[j][1])/2), instance])
+                            print(f"Sampled state with function 1: {current_fn1} and function 2: {current_fn2} in bin [{fn1_ranges[i]}, {fn2_ranges[j]}]")
+                            np.savetxt(f'samples/{knot_type}/{knot_type}_{partition}_{int((fn1_ranges[i][0]+fn1_ranges[i][1])/2)}_{int((fn2_ranges[j][0]+fn2_ranges[j][1])/2)}.csv', new_coord_w, delimiter=",", fmt='%.5f')
+                            sampled_states.append([partition, int((fn1_ranges[i][0]+fn1_ranges[i][1])/2), int((fn2_ranges[j][0]+fn2_ranges[j][1])/2)])
+                            instance_per_range.append([int((fn1_ranges[i][0]+fn1_ranges[i][1])/2), int((fn2_ranges[j][0]+fn2_ranges[j][1])/2), instance])
             
     return sampled_states, instance_per_range
 
-def process_wang_landau(args):
+def process_sampler(args):
 
-    i, oriented, knot_type, bins_1, bins_2, plot = args
-    sampled_states, instance_per_range = _sampling(i, oriented, knot_type, bins_1, bins_2, plot)
+    i, oriented, knot_type, fn_1, fn_2, bins_1, bins_2, plot = args
+    sampled_states, instance_per_range = _sampling(i, oriented, knot_type, fn_1, fn_2, bins_1, bins_2, plot)
     return sampled_states, instance_per_range
 
 
@@ -169,13 +160,16 @@ def main():
 
     start_time = time.time()
 
+    fn_1 = fns[0]
+    fn_2 = fns[1]
+
     bins_1 = sub_samples
     bins_2 = sub_samples
 
-    args_list = [(i, oriented, knot_type, bins_1, bins_2, plot) for i in range(samples)]
+    args_list = [(i, oriented, knot_type, fn_1, fn_2, bins_1, bins_2, plot) for i in range(samples)]
 
     with Pool(processes=num_processes) as pool: 
-        results = pool.map(process_wang_landau, args_list)  # Parallelize over samples
+        results = pool.map(process_sampler, args_list)  # Parallelize over samples
 
     run_time = time.time() - start_time
     print(run_time)
@@ -267,7 +261,7 @@ def main():
 
 par = ArgumentParser()
 '''
-    Lets us specify arguements for the code.
+    Lets us specify arguments for the code.
 '''
 
 par.add_argument("-d", "--discretization", type=int, default=100, help="Discretization of state space y,z axis.")
@@ -276,15 +270,14 @@ par.add_argument("-s", "--sampler", type=str, default='Metropolis', help="Sampli
 par.add_argument("-no", "--no_samples", type=int, default=1, help="Number of samples to generate per geometric requirement.")
 par.add_argument("-sub", "--no_sub_samples", type=int, default=2, help="Number of sub-samples per process.")
 par.add_argument("-np", "--no_processes", type=int, default=os.cpu_count(), help="Number of cores to run code on.")
-
-par.add_argument("-met", "--metrics", type=list, default=['wr', 'ent'], help="Geometric state space metrics to explore. Possible metrics:" \
-"wr, ent, curv, tor, acn, pd, rgy")
-par.add_argument("-distr", "--state_space_distr", type=list, default=[(0, 3), (500, 1000)], help="End-to-end state space sample distribution.")
+par.add_argument("-fns", "--functions", type=list, default=[None, None], help="Geometric state space metrics to explore. Default = writhe and entanglement (flagged by 'False')")
+par.add_argument("-distr", "--state_space_distr", type=list, default=[(0, 25), (0, 1500)], help="End-to-end state space sample distribution.")
 par.add_argument("-plot", "--plot", type=bool, default=False, help="Plot output (best used if sampling a single knot).")
 
 args = par.parse_args()
 
 if __name__ == "__main__":
+    
     discretization = args.discretization
     knot_type = args.knot
     sampler = args.sampler
@@ -292,5 +285,7 @@ if __name__ == "__main__":
     num_processes = args.no_processes
     sub_samples = args.no_sub_samples
     plot = args.plot
+    distr = args.state_space_distr
+    fns = args.functions
 
     main()

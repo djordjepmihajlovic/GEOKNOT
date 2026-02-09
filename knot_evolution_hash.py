@@ -2,8 +2,8 @@ import numpy as np
 from numba import njit, prange
 from knot_init import *
 from knot_invs import *
-import math
 import random
+from knot_functions import *
 
 '''
 BFACF/Pivot algorithm with strictly evolving sampler implementation for flat wrt dos polygonal lattice knot embeddings.
@@ -316,62 +316,6 @@ def long_range_entanglement(array_dict, sequence_threshold=10, distance_threshol
                     score += 1
     return score
 
-
-def average_curvature(array_dict):
-    '''
-    Input:
-    Computes the average curvature of a 3D curve defined by coords.
-    Output:
-    '''
-    coords = list(array_dict.keys())
-    n = len(coords)
-
-    # Compute first and second derivatives 
-    first_derivative = np.gradient(coords, axis=0)
-    second_derivative = np.gradient(first_derivative, axis=0)
-
-    # Compute curvature at each point
-    curvature = []
-    for i in range(n):
-        cross_product = np.cross(first_derivative[i], second_derivative[i])
-        numerator = np.linalg.norm(cross_product)
-        denominator = np.linalg.norm(first_derivative[i]) ** 3
-        if denominator != 0:
-            curvature.append(numerator / denominator)
-        else:
-            curvature.append(0)
-    return np.mean(curvature)
-
-@njit()
-def radius_of_gyration(array):
-    '''
-    Input:
-    Radius of gyration 
-    Output:
-    '''
-    indicies = np.argwhere(array > 0)
-    center_of_mass = np.mean(indicies, axis=0)
-    return np.sqrt(np.mean(np.sum((indicies - center_of_mass)**2, axis=1)))
-
-@njit()
-def gyration_tensor_and_eigenvalues(coords):
-    '''
-    Input:
-    Computes the gyration tensor and its eigenvalues.
-    Output:
-    '''
-
-    center_of_mass = np.mean(coords, axis=0)
-    
-    shifted_coords = coords - center_of_mass
-    gyration_tensor = np.zeros((3, 3))
-    for coord in shifted_coords:
-        gyration_tensor += np.outer(coord, coord)
-    gyration_tensor /= len(coords)
-    eigenvalues = np.linalg.eigvalsh(gyration_tensor)
-    
-    return gyration_tensor, eigenvalues
-
 @njit()
 def positional_difference(array, update_array):
     indicies_1 = np.argwhere(array > 0)
@@ -460,7 +404,7 @@ def points_on_axis(array, axis):
 
 
 @njit()
-def lattice_writhe_Cimasoni(array, no_points, projections_111, projections_1m11, projections_11m1, projections_1m1m1):
+def lattice_writhe_Cimasoni(projections_111, projections_1m11, projections_11m1, projections_1m1m1):
     '''
     Want to explore Tait numbers T(A_{i}) on the 4 areas (8 areas modulo symmetry) on the indicatrix corresponding to projections on: 
     (pi, e/2, sqrt(2)/2), (pi, -e/2, sqrt(2)/2), (pi, e/2, -sqrt(2)/2), (pi, -e/2, -sqrt(2)/2).
@@ -469,7 +413,6 @@ def lattice_writhe_Cimasoni(array, no_points, projections_111, projections_1m11,
 
     TA = 0
     projections = np.stack((projections_111, projections_1m11, projections_11m1, projections_1m1m1))
-    lens = no_points
 
     for x_th, x_th_proj in enumerate(projections):
 
@@ -660,33 +603,74 @@ def compute_single_sts_writhe(ring1, ring2, i, j, lw):
 
     return 2*wr
 
-### can reduce clutter here
-### also need to make it so updates are hard
 
-def BFACF(array_dict, timesteps, aimed_range):
+def _fn1_wrapper(array_dict, fn_1=None):
+    """
+    Compute first geometric functional for bias. If fn_1=None will automatically set to writhe.
+    """
+    # build dense array
+    max_x = max(p[0] for p in array_dict) + 1
+    max_y = max(p[1] for p in array_dict) + 1
+    max_z = max(p[2] for p in array_dict) + 1
+    dense = np.zeros((max_x, max_y, max_z), dtype=np.float64)
+    for (x, y, z), val in array_dict.items():
+        dense[x, y, z] = val
+
+    # legacy default
+    if fn_1 is None:
+        projections_111 = points_on_axis(dense, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
+        projections_1m11 = points_on_axis(dense, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
+        projections_11m1 = points_on_axis(dense, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
+        projections_1m1m1 = points_on_axis(dense, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
+        return lattice_writhe_Cimasoni(projections_111=projections_111,
+                                      projections_1m11=projections_1m11,
+                                      projections_11m1=projections_11m1,
+                                      projections_1m1m1=projections_1m1m1)
+
+    # try flexible call signatures for custom function
+    try:
+        return fn_1(array_dict)
+    except Exception as e:
+        raise RuntimeError(f"Provided fn_1 raised an error: {e}")
+
+
+def _fn2_wrapper(array_dict, fn_2=None):
+    """
+    Compute entanglement-like observable. `entanglement_fn` should accept
+    either `array_dict` or a dense numpy array. If None, falls back to
+    `long_range_entanglement`.
+    """
+    if fn_2 is None:
+        return long_range_entanglement(array_dict)
+
+    # try flexible call signatures for custom function
+    try:
+        return fn_2(array_dict)
+    except Exception as e:
+        raise RuntimeError(f"Provided fn_2 raised an error: {e}")
+
+
+def BFACF(array_dict, timesteps, aimed_range, fn_1=None, fn_2=None):
     '''
     BFACF with chosen sampling methods
     '''
-    # Gradient descent towards entanglement first.
-    # Need to generalize this.
     
-    wr_data = []
-    ent_data = []
+    fn1_data = []
+    fn2_data = []
     count_data = []
 
     alpha = 1
 
-    max_wr = max(aimed_range[0])
-    min_wr = min(aimed_range[0])
-    max_entang = max(aimed_range[1])
-    min_entang = min(aimed_range[1])
+    max_fn1 = max(aimed_range[0])
+    min_fn1 = min(aimed_range[0])
+    max_fn2 = max(aimed_range[1])
+    min_fn2 = min(aimed_range[1])
     
     random_number = random.uniform(0, 1)
-    target_wr = (max_wr + min_wr) / 2 + random_number * (max_wr - min_wr) / 2
-    target_entang = (max_entang + min_entang) / 2 + random_number * (max_entang - min_entang) / 2
+    target_fn1 = (max_fn1 + min_fn1) / 2 + random_number * (max_fn1 - min_fn1) / 2
+    target_fn2 = (max_fn2 + min_fn2) / 2 + random_number * (max_fn2 - min_fn2) / 2
 
     init_array = dict(array_dict)
-    no_points = len(init_array)
     max_x = max(p[0] for p in init_array) + 1
     max_y = max(p[1] for p in init_array) + 1
     max_z = max(p[2] for p in init_array) + 1
@@ -694,39 +678,26 @@ def BFACF(array_dict, timesteps, aimed_range):
     for (x, y, z), val in init_array.items():
         init2array[x, y, z] = val
 
-    projections_111 = points_on_axis(init2array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
-    projections_1m11 = points_on_axis(init2array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
-    projections_11m1 = points_on_axis(init2array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
-    projections_1m1m1 = points_on_axis(init2array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
-
-    old_writhe_energy = lattice_writhe_Cimasoni(init2array, no_points, 
-                                            projections_111=projections_111,
-                                            projections_1m11=projections_1m11,
-                                            projections_11m1=projections_11m1,
-                                            projections_1m1m1=projections_1m1m1)
-    
-    old_entanglement_energy = long_range_entanglement(init_array)
-    # old_entanglement_energy = average_curvature(init_array)
-    
-    old_energy = alpha * old_entanglement_energy + (1-alpha) * old_writhe_energy
-
-    # old_curve_energy = average_curvature(init2array)
+    # compute initial observables via wrappers (allows user-supplied functions)
+    old_fn1_energy = _fn1_wrapper(init_array, fn_1=fn_1)
+    old_fn2_energy = _fn2_wrapper(init_array, fn_2=fn_2)
+    old_energy = alpha * old_fn1_energy + (1 - alpha) * old_fn2_energy
 
     phase = 1
 
     for time in range(timesteps):
-        if phase == 1 and target_entang - 10*(target_entang/100) < old_entanglement_energy < target_entang + 10*(target_entang/100):
+        if phase == 1 and target_fn2 - 10*(target_fn2/100) < old_fn2_energy < target_fn2 + 10*(target_fn2/100):
             print(f"Moved to phase 2 at: {time} steps")
             alpha = 0
             phase = 2
-            old_energy = old_writhe_energy
+            old_energy = old_fn1_energy
 
-        elif phase == 2 and target_wr - 10*(target_wr/100) < old_writhe_energy < target_wr + 10*(target_wr/100):
+        elif phase == 2 and target_fn1 - 10*(target_fn1/100) < old_fn1_energy < target_fn1 + 10*(target_fn1/100):
             print(f"Target reached in: {time} steps")
             break
 
-        wr_data.append(old_writhe_energy)
-        ent_data.append(old_entanglement_energy)
+        fn1_data.append(old_fn1_energy)
+        fn2_data.append(old_fn2_energy)
         count_data.append(time)
         
         # print(f"simulation: {time/timesteps}")
@@ -746,9 +717,6 @@ def BFACF(array_dict, timesteps, aimed_range):
         del update_array[random_edge]
         update_array[new_edge[:3]] = update_array.get(new_edge[:3], 0) + old_val
 
-        # New function to check for singular points, takes in the updated array edge checks connecting strands (forward and backward) does a sweep to check for intersections
-        # Only needs to sweep neighbours of the new edge not the entire array
-
         status = check_verticies(update_array)
         if status < -2:#< -2: Valid configurations.
             continue
@@ -761,83 +729,71 @@ def BFACF(array_dict, timesteps, aimed_range):
             for (x, y, z), val in update_array.items():
                 update2array[x, y, z] = val
 
-            projections_111 = points_on_axis(update2array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
-            projections_1m11 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
-            projections_11m1 = points_on_axis(update2array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
-            projections_1m1m1 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
-
-            new_writhe_energy = lattice_writhe_Cimasoni(update2array, no_points, 
-                                                    projections_111=projections_111,
-                                                    projections_1m11=projections_1m11,
-                                                    projections_11m1=projections_11m1,
-                                                    projections_1m1m1=projections_1m1m1)
-            
-            new_entanglement_energy = long_range_entanglement(update_array)
-            # new_entanglement_energy = average_curvature(update_array)
-
-            new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
+            # compute new observables using wrappers
+            new_fn1_energy = _fn1_wrapper(update_array, fn_1=fn_1)
+            new_fn2_energy = _fn2_wrapper(update_array, fn_2=fn_2)
+            new_energy = alpha * new_fn2_energy + (1 - alpha) * new_fn1_energy
             
             temp = 0.00001
 
             if phase == 1:
-                if new_entanglement_energy < target_entang:
+                if new_fn2_energy < target_fn2:
 
                     if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=temp):
                         array_dict = update_array
-                        old_entanglement_energy = new_entanglement_energy
-                        old_writhe_energy = new_writhe_energy
+                        old_fn2_energy = new_fn2_energy
+                        old_fn1_energy = new_fn1_energy
                         old_energy = new_energy
                     else:
                         continue
                 else:
                     if metropolis_acceptance(old_energy=-old_energy, new_energy=-new_energy, temperature=temp):
                         array_dict = update_array
-                        old_entanglement_energy = new_entanglement_energy
-                        old_writhe_energy = new_writhe_energy
+                        old_fn2_energy = new_fn2_energy
+                        old_fn1_energy = new_fn1_energy
                         old_energy = new_energy
                     else:
                         continue
 
             elif phase == 2:
                 # Hard constraint only accept if deviation within 10% of target
-                tol_ent = 0.1
-                if new_writhe_energy < target_wr:
-                    if not (target_entang*(1 - tol_ent) <= new_entanglement_energy <= target_entang*(1 + tol_ent)):
+                tol_fn2 = 0.1
+                if new_fn1_energy < target_fn1:
+                    if not (target_fn2*(1 - tol_fn2) <= new_fn2_energy <= target_fn2*(1 + tol_fn2)):
                         continue
                     if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=temp):
                         array_dict = update_array
-                        old_entanglement_energy = new_entanglement_energy
-                        old_writhe_energy = new_writhe_energy
+                        old_fn2_energy = new_fn2_energy
+                        old_fn1_energy = new_fn1_energy
                         old_energy = new_energy
                     else:
                         continue
 
-    return array_dict, old_writhe_energy, old_entanglement_energy
+    return array_dict, old_fn1_energy, old_fn2_energy
 
 
-def pivot(array_dict, timesteps, knot, aimed_range):
+def pivot(array_dict, timesteps, knot, aimed_range, fn_1=None, fn_2=None):
     '''
     Pivot algorithm to increase autocorrelation of samples.
     Notice: valid pivots occur on a shared axis in Z^{3}
     '''
 
-    wr_data = []
-    ent_data = []
+    fn1_data = []
+    fn2_data = []
     count_data = []
 
     # Randomly pick number that determines minimizing/ maximizing/ doing nothing for writhe
-    max_wr = max(aimed_range[0])
-    min_wr = min(aimed_range[0])
-    max_entang = max(aimed_range[1])
-    min_entang = min(aimed_range[1])
+    max_fn1 = max(aimed_range[0])
+    min_fn1 = min(aimed_range[0])
+    max_fn2 = max(aimed_range[1])
+    min_fn2 = min(aimed_range[1])
 
     random_number = random.uniform(0, 1)
 
-    target_wr = (max_wr + min_wr) / 2 + random_number * (max_wr - min_wr) / 2
-    target_entang = (max_entang + min_entang) / 2 + random_number * (max_entang - min_entang) / 2
+    target_fn1 = (max_fn1 + min_fn1) / 2 + random_number * (max_fn1 - min_fn1) / 2
+    target_fn2 = (max_fn2 + min_fn2) / 2 + random_number * (max_fn2 - min_fn2) / 2
 
     init_array = dict(array_dict)
-    no_points = len(init_array)
     max_x = max(p[0] for p in init_array) + 1
     max_y = max(p[1] for p in init_array) + 1
     max_z = max(p[2] for p in init_array) + 1
@@ -845,36 +801,24 @@ def pivot(array_dict, timesteps, knot, aimed_range):
     for (x, y, z), val in init_array.items():
         init2array[x, y, z] = val
 
-    projections_111 = points_on_axis(init2array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
-    projections_1m11 = points_on_axis(init2array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
-    projections_11m1 = points_on_axis(init2array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
-    projections_1m1m1 = points_on_axis(init2array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
-
-    old_writhe_energy = lattice_writhe_Cimasoni(init2array, no_points,
-                                            projections_111=projections_111,
-                                            projections_1m11=projections_1m11,
-                                            projections_11m1=projections_11m1,
-                                            projections_1m1m1=projections_1m1m1)
-    
-    old_entanglement_energy = long_range_entanglement(init_array)
-    # old_entanglement_energy = average_curvature(init_array)
-
+    # compute initial observables via wrappers
+    old_fn1_energy = _fn1_wrapper(init_array, fn_1=fn_1)
+    old_fn2_energy = _fn2_wrapper(init_array, fn_2=fn_2)
     phase = 1
     alpha = 1
-
-    old_energy = alpha * old_entanglement_energy + (1-alpha) * old_writhe_energy
+    old_energy = alpha * old_fn2_energy + (1 - alpha) * old_fn1_energy
 
     for time in range(timesteps):
-        if phase == 1 and  target_entang - 10*(target_entang/100) < old_entanglement_energy < target_entang + 10*(target_entang/100):
+        if phase == 1 and  target_fn2 - 10*(target_fn2/100) < old_fn2_energy < target_fn2 + 10*(target_fn2/100):
             print(f"Entanglement target reached in: {time} steps")
             phase = 2
             alpha = 0
-            old_energy = old_writhe_energy
+            old_energy = old_fn1_energy
             break 
 
         count_data.append(time)
-        wr_data.append(old_writhe_energy)
-        ent_data.append(old_entanglement_energy)
+        fn1_data.append(old_fn1_energy)
+        fn2_data.append(old_fn2_energy)
 
         if time % (timesteps/10) == 0:
             print(f"Pivot: {time/timesteps}")
@@ -933,31 +877,21 @@ def pivot(array_dict, timesteps, knot, aimed_range):
             for (x, y, z), val in update_dict.items():
                 update2array[x, y, z] = val
 
-            projections_111 = points_on_axis(update2array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
-            projections_1m11 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
-            projections_11m1 = points_on_axis(update2array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
-            projections_1m1m1 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
-
-            new_writhe_energy = lattice_writhe_Cimasoni(update2array, no_points,
-                                                    projections_111=projections_111,
-                                                    projections_1m11=projections_1m11,
-                                                    projections_11m1=projections_11m1,
-                                                    projections_1m1m1=projections_1m1m1)
-            
-            new_entanglement_energy = long_range_entanglement(update_dict)
-            # new_entanglement_energy = average_curvature(update_dict)
-            new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
+            # compute new observables using wrappers
+            new_fn1_energy = _fn1_wrapper(update_dict, fn_1=fn_1)
+            new_fn2_energy = _fn2_wrapper(update_dict, fn_2=fn_2)
+            new_energy = alpha * new_fn2_energy + (1 - alpha) * new_fn1_energy
             
             # if new_writhe_energy < target_wr:
             #     if new_entanglement_energy < target_entang:
 
-            temp = 0.0001 * (target_wr - new_writhe_energy) / target_wr
+            temp = 0.0001 * (target_fn1 - new_fn1_energy) / target_fn1
             # temp = 0
-            if old_entanglement_energy < target_entang:
+            if old_fn2_energy < target_fn2:
                 if metropolis_acceptance(old_energy=old_energy, new_energy=new_energy, temperature=temp):
                     array_dict = update_dict
-                    old_writhe_energy = new_writhe_energy
-                    old_entanglement_energy = new_entanglement_energy
+                    old_fn1_energy = new_fn1_energy
+                    old_fn2_energy = new_fn2_energy
                     old_energy = new_energy
                     
                 else:
@@ -966,78 +900,11 @@ def pivot(array_dict, timesteps, knot, aimed_range):
                 if metropolis_acceptance(old_energy=-old_energy, new_energy=-new_energy, temperature=temp):
                     # Reverse search
                     array_dict = update_dict
-                    old_writhe_energy = new_writhe_energy
-                    old_entanglement_energy = new_entanglement_energy
+                    old_fn1_energy = new_fn1_energy
+                    old_fn2_energy = new_fn2_energy
                     old_energy = new_energy
                     
                 else:
                     continue
 
     return array_dict
-
-#### Below is attempt to compactify the above code ####
-
-# def bias_energy(ent, wr, target_ent, target_wr, k_ent=1.0, k_wr=1.0):
-#     """
-#     Harmonic bias centered on targets
-#     """
-#     return k_ent * (ent - target_ent)**2 + k_wr * (wr - target_wr)**2
-
-
-# def metropolis_biased_accept(old_ent, old_wr, new_ent, new_wr,
-#                              target_ent, target_wr,
-#                              k_ent=1.0, k_wr=1.0, temp=1e-3):
-#     """
-#     Compute biased energies and perform a Metropolis accept/reject.
-#     """
-#     old_E = bias_energy(old_ent, old_wr, target_ent, target_wr, k_ent, k_wr)
-#     new_E = bias_energy(new_ent, new_wr, target_ent, target_wr, k_ent, k_wr)
-
-#     dE = new_E - old_E
-#     if dE <= 0:
-#         return True, new_E, old_E
-#     else:
-#         if temp <= 0:
-#             return False, new_E, old_E
-#         p = math.exp(-dE / temp)
-#         if random.random() < p:
-#             return True, new_E, old_E
-#         else:
-#             return False, new_E, old_E
-
-# def dict_to_dense(array_dict):
-#     """
-#     Turn dict into dense numpy array.
-#     """
-#     max_x = max(p[0] for p in array_dict) + 1
-#     max_y = max(p[1] for p in array_dict) + 1
-#     max_z = max(p[2] for p in array_dict) + 1
-#     arr = np.zeros((max_x, max_y, max_z), dtype=np.float64)
-#     for (x, y, z), val in array_dict.items():
-#         arr[x, y, z] = val
-#     return arr
-
-# def compute_observables(update_dict, alpha, no_points):
-
-#     update2array = dict_to_dense(update_dict)
-
-#     projections_111 = points_on_axis(update2array, np.array([np.pi, np.e/2, np.sqrt(2)/2])) 
-#     projections_1m11 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, np.sqrt(2)/2])) 
-#     projections_11m1 = points_on_axis(update2array, np.array([np.pi, np.e/2, -(np.sqrt(2))/2]))
-#     projections_1m1m1 = points_on_axis(update2array, np.array([np.pi, -(np.e)/2, -(np.sqrt(2))/2]))
-
-#     new_writhe_energy = lattice_writhe_Cimasoni(update2array, no_points,
-#                                             projections_111=projections_111,
-#                                             projections_1m11=projections_1m11,
-#                                             projections_11m1=projections_11m1,
-#                                             projections_1m1m1=projections_1m1m1)
-    
-#     # new_entanglement_energy = long_range_entanglement(update_dict)
-#     new_entanglement_energy = average_curvature(update_dict)
-#     new_energy = alpha * new_entanglement_energy + (1-alpha) * new_writhe_energy
-
-#     return new_energy
-
-# def bias_energy(wr, ent, target_wr, target_ent, sigma_wr, sigma_ent):
-#     return 0.5 * ((wr - target_wr)**2 / sigma_wr**2 
-#                   + (ent - target_ent)**2 / sigma_ent**2)

@@ -79,13 +79,23 @@ def plot_3d_line_array(array):
 def plot_3d_line(coord_list):
     """
     Plots a 3D line and scatter plot based on a list of tuples (val, x, y, z).
+    # sometimes you have instances where knots are canonically ordered, sometimes you dont.
+    # thats what coord_list[0]==4 is checking; if ==3 assume canonical orientation.
     """
     # Extract values and coordinates
-    #values = [item[0] for item in coord_list]
-    values = np.arange(0, len(coord_list))
-    x = [item[0] for item in coord_list]
-    y = [item[1] for item in coord_list]
-    z = [item[2] for item in coord_list]
+   
+
+    if len(coord_list[0]) == 4:
+        values = [item[0] for item in coord_list]
+        x = [item[1] for item in coord_list]
+        y = [item[2] for item in coord_list]
+        z = [item[3] for item in coord_list]
+
+    else:
+        values = np.arange(0, len(coord_list))
+        x = [item[0] for item in coord_list]
+        y = [item[1] for item in coord_list]
+        z = [item[2] for item in coord_list]
 
     # Normalize values for coloring
     norm = mcolors.Normalize(vmin=min(values), vmax=max(values))

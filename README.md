@@ -29,8 +29,10 @@ The above code will therefore sample 8 knots. There are 4 different distribution
 ### Geometric features
 
 To add your own geometric measurements to be used in the sampler:
-* Requirements: The function must take as input ordered knot coordinates, indicating the relevant orientation.
+* Requirements: The function must take as input ordered knot coordinates.
+* An example feature is included in knot_functions.py. To use this feature, use the arg -fns[radius_of_gyration, False] (this will bias radius of gyration and long-range entanglement... Don't forget to change the sample distribution accordingly).
 
 ### Knot size
 
-Knots are initialized in the knot_init.py file, specifically a unknot and trefoil of size 100 are provided.
+Knots are initialized in the knot_init.py file, specifically a unknot and trefoil of size 100 are provided in knot_init.py
+Notice: larger knot sizes are more likely to reach required geometries, thus speeding up sample time.
